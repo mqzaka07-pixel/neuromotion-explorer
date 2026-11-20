@@ -1,8 +1,0 @@
-[build]
-  publish = "."
-
-# saraf.html adalah halaman utama website
-[[redirects]]
-  from = "/"
-  to = "/saraf.html"
-  status = 200
