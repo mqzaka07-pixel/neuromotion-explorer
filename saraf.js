@@ -1438,8 +1438,8 @@ async function stillShot(build, opt0, pose, W = 660, H = 310) {
 
 const STILL_JOBS = [
   { id: 'saraf',  build: BUILD_body,     opt: { hw: 3.4, hh: 8.4 }, pose: cropBody(.34, .66), set: () => { bodyFocus = 'otak'; } },
-  { id: 'gerak',  build: BUILD_arm,      opt: { hw: 4.6, hh: 2.6 }, set: () => { armK = armTarget = 1; } },
-  { id: 'tulang', build: BUILD_body,     opt: { hw: 3.4, hh: 8.4 }, pose: cropBody(.62, .5), set: () => { bodyFocus = 'tepi'; } },
+  // Kartu gerak dan tulang memakai foto anatomi sumber eksternal di index.html.
+  // Jangan render ulang dari model 3D di sini agar src foto tidak tertimpa.
   { id: 'refleks', build: BUILD_body,    opt: { hw: 3.4, hh: 8.4 }, pose: cropBody(.42, .08), set: () => { bodyFocus = 'tepi'; } },
   { id: 'oa',     build: BUILD_artritis, opt: { hw: 4.8, hh: 3.1, cy: -.1 } },
   { id: 'ra',     build: BUILD_ra,       opt: { hw: 3, hh: 2 } },
