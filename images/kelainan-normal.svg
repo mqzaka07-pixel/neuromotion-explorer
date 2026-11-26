@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 236 340" role="img" aria-label="Ilustrasi tampak samping postur tulang belakang normal">
+<rect width="236" height="340" fill="#d0d0d0"/>
+<g stroke-linecap="round" stroke-linejoin="round">
+  <path d="M83 86 C76 102 74 128 77 154 L79 228 L71 304 L91 304 L101 230 L103 158 L111 112 L101 88Z" fill="#4e8da0"/>
+  <path d="M84 86 L107 86 L115 116 L108 164 L102 180 L76 178 L69 145 L72 111Z" fill="#e65319"/>
+  <path d="M75 106 L64 142 L67 174" fill="none" stroke="#e65319" stroke-width="10"/>
+  <path d="M106 107 L116 141 L112 171" fill="none" stroke="#e65319" stroke-width="9"/>
+  <path d="M66 174 L69 187 L75 187 L74 173 M109 170 L111 187 L117 187 L115 169" fill="#f1bd3f"/>
+  <path d="M77 228 L75 298 L68 316 L91 316 L96 298 L101 230" fill="#54899a"/>
+  <path d="M68 316 L65 326 L96 326 L91 317" fill="#222"/>
+  <path d="M77 80 C68 72 70 51 84 43 C98 35 113 46 111 62 C110 75 99 85 88 85Z" fill="#f2bd3b"/>
+  <path d="M71 61 C68 47 77 35 92 35 C102 35 110 42 111 51 C102 47 96 50 91 57 C86 64 80 65 71 61Z" fill="#222"/>
+  <path d="M106 60 L114 64 L106 68" fill="#f2bd3b"/>
+  <path d="M84 89 C83 110 83 132 85 157 C86 179 85 201 86 224" fill="none" stroke="#16a34a" stroke-width="3" stroke-dasharray="3 7"/>
+  <path d="M89 94 C90 119 90 145 91 166 C92 189 91 208 91 226" fill="none" stroke="#f5d5a0" stroke-width="2"/>
+</g>
+<rect x="20" y="326" width="196" height="14" rx="3" fill="#079447"/>
+<text x="118" y="337" font-family="Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#fff">NORMAL</text>
+</svg>
