@@ -353,9 +353,11 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 
 /* Foto anatomi bersumber dari Wikimedia Commons (bukan gambar AI). */
 .card-thumb { background: #10283c; }
-.card-thumb img[data-still="gerak"],
-.card-thumb img[data-still="tulang"] {
+.card-thumb img[data-card-image="gerak"],
+.card-thumb img[data-card-image="tulang"] {
   object-fit: contain;
   object-position: center;
   padding: 5px;
 }
+
+.card-source { display:block; margin: .45rem 0 .2rem; color: var(--mute); font-size: .72rem; line-height: 1.35; }
