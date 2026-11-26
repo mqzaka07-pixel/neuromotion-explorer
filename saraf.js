@@ -1079,11 +1079,14 @@ const BUILD_spine = async api => {
 viewer('spine', { hw: 7.7, hh: 3.4, cy: -.15 }, BUILD_spine);
 
 /* ---------- Fisura (retak tulang) pada Tulang Kaki & Tulang Lengan ---------- */
-viewer('fisura', { hw: 4.6, hh: 2.9, cy: -.1 }, async api => {
+viewer('fisura', { hw: 7.4, hh: 5.3, cy: -.15, auto: false }, async api => {
   const sk = await pack('skeleton');
   const boneNormal = mat('#e9e2cf', { roughness: .7, side: THREE.DoubleSide });
   const boneX = glass('#7fd8ff', .3); boneX.side = THREE.DoubleSide;
   const crackM = mat('--muscle', { emissive: new THREE.Color(cssVar('--muscle')), emissiveIntensity: .8 });
+  /* Siluet rangka transparan sebagai konteks anatomi; tulang yang dipelajari ditonjolkan di depan. */
+  const skeletonXray = glass('#8ec9e8', .10);
+  place(api.g, group(sk, skeletonXray), partBox(sk), 2.5, 5.15);
   api.rot = [];
   const bones = [];
 
@@ -1123,7 +1126,15 @@ viewer('fisura', { hw: 4.6, hh: 2.9, cy: -.1 }, async api => {
         const ring = mesh(new THREE.TorusGeometry(rBone, .014, 8, 32).rotateX(Math.PI / 2), crackM, c0.x, y0, c0.z);
         obj.add(low, topP, ring); bones.push(low, top);
       }
-      const pl = place(h, obj, fb, 1.6, 4.4);
+      /* Tampilkan pasangan kiri-kanan untuk setiap kondisi tulang. */
+      const pair = new THREE.Group();
+      pair.add(obj);
+      const opposite = obj.clone();
+      opposite.scale.x = -1;
+      opposite.position.x = .34;
+      pair.add(opposite);
+      pair.traverse(o => { if (o.isMesh && (o.material === boneNormal || o.material === boneX)) bones.push(o); });
+      const pl = place(h, pair, fb, 1.75, 4.4);
       if (i === 1) crackLabel = api.label('Garis retakan', ...pl.at(c0).add(new THREE.Vector3(1.05, .55, 0)).toArray(), h);
     });
     return { setGroup, crackLabel };
@@ -1132,9 +1143,9 @@ viewer('fisura', { hw: 4.6, hh: 2.9, cy: -.1 }, async api => {
   const legSet = buildBoneSet('right femur');
   const armSet = buildBoneSet('right humerus');
 
-  api.label('Tulang normal', -3.1, -2.6);
-  api.label('Fisura (retak)', 0, -2.6);
-  api.label('Fraktur (patah)', 3.1, -2.6);
+  api.label('Normal • kiri & kanan', -3.1, -2.8);
+  api.label('Fisura • kiri & kanan', 0, -2.8);
+  api.label('Fraktur • kiri & kanan', 3.1, -2.8);
 
   api.tick = t => {
     const isLeg = fisuraBone === 'leg';
