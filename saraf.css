@@ -406,3 +406,40 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 @media (max-width: 700px) {
   #kelainan [data-scene="fisura"] { height: 470px; }
 }
+
+/* Panel edukasi: ilustrasi anatomi asli dari Wikimedia Commons, bukan gambar AI. */
+.bone-care {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  overflow: hidden;
+}
+.bone-care-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.bone-care-image {
+  display: block;
+  flex: 0 0 auto;
+  width: auto;
+  height: 210px;
+  max-width: 150px;
+  object-fit: contain;
+  object-position: center;
+  filter: brightness(0) invert(1);
+  opacity: .92;
+}
+.bone-care-credit {
+  display: block;
+  margin-top: 9px;
+  font-size: .72rem;
+  line-height: 1.4;
+  opacity: .72;
+}
+.bone-care-credit a { color: inherit; text-decoration: underline; }
+@media (max-width: 640px) {
+  .bone-care { gap: 10px; align-items: center; }
+  .bone-care-image { height: 150px; max-width: 88px; }
+  .bone-care-credit { font-size: .65rem; }
+}
