@@ -125,12 +125,7 @@ $('#crackBtn').addEventListener('click', e => {
   e.currentTarget.textContent = xray ? 'Mode normal' : 'Mode rontgen';
 });
 
-let kneeMoving = true;
-$('#kneeBtn').addEventListener('click', e => {
-  kneeMoving = !kneeMoving;
-  e.currentTarget.classList.toggle('sel', kneeMoving);
-  e.currentTarget.textContent = kneeMoving ? 'Jeda gerak lutut' : 'Gerakkan lutut';
-});
+// Kontrol tombol jeda gerak lutut dihapus karena tidak digunakan.
 
 /* ---------------------------------------------------------
    4. SIMULASI ALUR GERAK SADAR / REFLEKS (Gambar + Panah ->)
