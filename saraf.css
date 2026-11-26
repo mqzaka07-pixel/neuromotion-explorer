@@ -350,3 +350,12 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 .scene-card figcaption { display: grid; gap: .35rem; padding: .9rem 1rem 1rem; color: var(--mute); line-height: 1.6; }
 .scene-card figcaption b { color: var(--ink); }
 @media (max-width: 650px) { .scene-context { grid-template-columns: 1fr; } .scene-card img { height: 210px; } }
+
+/* Foto anatomi bersumber dari Wikimedia Commons (bukan gambar AI). */
+.card-thumb { background: #10283c; }
+.card-thumb img[data-still="gerak"],
+.card-thumb img[data-still="tulang"] {
+  object-fit: contain;
+  object-position: center;
+  padding: 5px;
+}
