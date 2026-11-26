@@ -477,3 +477,11 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 .bone-care-credit { display:block; margin-top:14px; line-height:1.6; }
 .bone-care-credit a { color:var(--accent,#63d7cc); text-decoration:underline; }
 @media(max-width:600px){ .bone-care-item .bone-care-3d { height:160px; } }
+
+
+/* Realistic human 3D model frames: ensure iframe is visible and not stick-figure SVG fallback */
+.bone-care-grid .bone-care-item { display:flex; flex-direction:column; align-items:stretch; }
+.bone-care-grid .bone-care-3d { display:block !important; width:100% !important; height:210px !important; min-height:210px; border:0; border-radius:10px; background:#0d1d2a; pointer-events:none; }
+.bone-care-grid .bone-care-item b { margin-top:10px; }
+.bone-care-credit { display:block; margin-top:14px; }
+@media(max-width:600px){ .bone-care-grid .bone-care-3d { height:180px !important; min-height:180px; } }
