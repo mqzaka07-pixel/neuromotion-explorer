@@ -817,6 +817,13 @@ const BUILD_body = async api => {
 };
 viewer('body', { hw: 3.4, hh: 8.4 }, BUILD_body);
 
+/* Kartu Beranda: model rangka manusia normal yang dirender langsung dan dapat diputar. */
+viewer('homeNormalSkeleton', { hw: 3.4, hh: 8.4, auto: false }, async api => {
+  const sk = await pack('skeleton');
+  const bone = mat(COL.bone, { roughness: .65 });
+  place(api.g, group(sk, bone), partBox(sk), 3.4, 8.4);
+});
+
 /* ---------- Bagian-bagian otak ---------- */
 viewer('brain', { hw: 1.9, hh: 1.75 }, async api => {
   const br = await pack('brain');
