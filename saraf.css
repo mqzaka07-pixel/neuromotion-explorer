@@ -491,3 +491,12 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 .bone-care-grid .bone-care-3d { display:block !important; width:100% !important; height:210px !important; min-height:210px; object-fit:contain; object-position:center; border:0; border-radius:10px; background:#0d1d2a; pointer-events:none; }
 .bone-care-grid .bone-care-item { overflow:hidden; }
 @media(max-width:600px){ .bone-care-grid .bone-care-3d { height:180px !important; min-height:180px; } }
+
+
+/* Bone care cards: relevant non-AI photos and simple posture illustration */
+.bone-care-grid .bone-care-3d, .bone-care-grid .bone-care-photo { display:block !important; width:100% !important; height:210px !important; min-height:210px; object-fit:cover; object-position:center; border:0; border-radius:10px; background:#0d1d2a; pointer-events:none; }
+.bone-care-grid .bone-care-photo-pair { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.bone-care-grid .bone-care-photo-pair .bone-care-photo { height:210px !important; object-fit:cover; }
+.bone-care-grid .bone-care-item { overflow:hidden; }
+.bone-care-grid .bone-care-credit { display:block; line-height:1.5; margin-top:14px; }
+@media(max-width:600px){ .bone-care-grid .bone-care-3d, .bone-care-grid .bone-care-photo { height:180px !important; min-height:180px; } .bone-care-grid .bone-care-photo-pair .bone-care-photo { height:180px !important; } }
