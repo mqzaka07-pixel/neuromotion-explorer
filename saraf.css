@@ -510,3 +510,20 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 #kelainan [data-scene="fisura"] + .tabs { position:relative; z-index:2; justify-content:center; gap:.65rem; margin:1.1rem auto; }
 #kelainan [data-scene="fisura"] + .tabs button { min-height:50px; padding:.7rem 1.2rem; }
 @media(max-width:680px){#kelainan [data-scene="fisura"]{height:480px}#kelainan [data-scene="artritis"]{height:490px}#kelainan [data-scene="oaCard"]{height:330px}#kelainan [data-scene="fisura"] + .tabs{flex-wrap:wrap}}
+
+/* Kontrol sentuh dan petunjuk visual untuk model anatomi kelainan */
+#kelainan [data-scene="fisura"],
+#kelainan [data-scene="artritis"],
+#kelainan [data-scene="oaCard"] { cursor:grab; touch-action:none; }
+#kelainan [data-scene="fisura"]:active,
+#kelainan [data-scene="artritis"]:active,
+#kelainan [data-scene="oaCard"]:active { cursor:grabbing; }
+#kelainan [data-scene="fisura"] canvas,
+#kelainan [data-scene="artritis"] canvas,
+#kelainan [data-scene="oaCard"] canvas { pointer-events:auto; touch-action:none; }
+#kelainan [data-scene="fisura"] .hint,
+#kelainan [data-scene="artritis"] .hint,
+#kelainan [data-scene="oaCard"] .hint { z-index:4; font-size:13px; padding:6px 10px; }
+#kelainan [data-scene="fisura"] .lb,
+#kelainan [data-scene="artritis"] .lb,
+#kelainan [data-scene="oaCard"] .lb { z-index:3; font-size:12px; font-weight:700; }
