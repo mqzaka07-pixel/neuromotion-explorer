@@ -1206,24 +1206,7 @@ const BUILD_jointComparison = async (api, condition = 'arthritis') => {
       }
     });
 
-    api.label(title, 0, -3.42, .15, holder, true);
-    api.label(affected
-      ? (condition === 'arthritis' ? 'LUTUT MERADANG' : 'LUTUT OSTEOARTRITIS')
-      : 'TUBUH NORMAL', 0, -3.72, .15, holder, true);
-
-    if (affected) {
-      const kp = kneeCenters[1] || kneeCenters[0];
-      if (condition === 'arthritis') {
-        api.label('SINOVIUM MERADANG', kp.x + .55, kp.y + .22, kp.z + .3, holder, true);
-        api.label('SENDI BENGKAK', kp.x + .55, kp.y - .12, kp.z + .3, holder, true);
-      } else {
-        api.label('KARTILAGO MENIPIS', kp.x + .55, kp.y + .22, kp.z + .3, holder, true);
-        api.label('OSTEOFIT', kp.x + .55, kp.y - .12, kp.z + .3, holder, true);
-      }
-    } else {
-      const kp = kneeCenters[1] || kneeCenters[0];
-      api.label('SENDI SEHAT', kp.x + .52, kp.y, kp.z + .3, holder, true);
-    }
+    // Keterangan dipindahkan ke caption HTML agar tidak menutupi anatomi 3D.
     return holder;
   };
 
