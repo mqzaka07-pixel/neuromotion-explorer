@@ -1035,7 +1035,8 @@ viewer('muscleOrgans', { hw: 7.2, hh: 2.25, cy: -.2 }, async api => {
 const BUILD_spine = async api => {
   const sk = await pack('skeleton');
   const list = pick(sk, RE.spineBone).concat(pick(sk, RE.disc));
-  const box = partBox(list), top = box.max.y, H = box.max.y - box.min.y;
+  const spineBox = partBox(list), fullBox = partBox(sk);
+  const top = spineBox.max.y, H = spineBox.max.y - spineBox.min.y;
   const A = .6;
   const gauss = (t, m, w) => Math.exp(-Math.pow((t - m) / w, 2));
   const defs = [
@@ -1046,10 +1047,13 @@ const BUILD_spine = async api => {
   ];
   const bone = new THREE.Color(COL.bone), bad = new THREE.Color(cssVar('--muscle'));
   const discM = mat(COL.disc, { roughness: .4 });
+  const bodyM = glass(COL.bone, .16);
   api.rot = [];
   defs.forEach(([name, f, ry], i) => {
-    const x = (i - 1.5) * 3.4;
+    const x = (i - 1.5) * 3.6;
     const holder = new THREE.Group(); holder.position.x = x; holder.rotation.y = ry;
+    const figure = new THREE.Group();
+    figure.add(group(sk, bodyM));
     const col = new THREE.Group();
     list.forEach(p => {
       const c = boxC(partBox([p])), t = (top - c.y) / H, e = .01;
@@ -1060,18 +1064,19 @@ const BUILD_spine = async api => {
       piece.rotation.set(Math.atan(sz), 0, -Math.atan(sx));
       let m = discM;
       if (p.g !== 'disc') {
-        m = mat(COL.bone, { roughness: .65 });
+        m = mat(COL.bone, { roughness: .55, emissive: new THREE.Color(COL.disc), emissiveIntensity: .12 });
         m.color.copy(bone).lerp(bad, Math.min(1, Math.hypot(dx, dz) / A) * .85);
       }
       const o = new THREE.Mesh(geo(p), m); o.position.copy(c).negate();
       piece.add(o); col.add(piece);
     });
-    place(holder, col, box, 2.6, 5.4);
+    figure.add(col);
+    place(holder, figure, fullBox, 2.55, 5.35);
     api.g.add(holder); api.rot.push(holder);
     api.label(name, x, -2.95);
   });
 };
-viewer('spine', { hw: 6.8, hh: 3.3, cy: -.15 }, BUILD_spine);
+viewer('spine', { hw: 7.7, hh: 3.4, cy: -.15 }, BUILD_spine);
 
 /* ---------- Fisura (retak tulang) pada Tulang Kaki & Tulang Lengan ---------- */
 viewer('fisura', { hw: 4.6, hh: 2.9, cy: -.1 }, async api => {
@@ -1147,6 +1152,8 @@ const BUILD_artritis = async api => {
   const sk = await pack('skeleton');
   const B = n => one(sk, n);
   const fem = B('right femur'), tib = B('right tibia'), fib = B('right fibula'), pat = B('right patella');
+  const fullBodyMat = glass(COL.bone, .13);
+  place(api.g, group(sk, fullBodyMat), partBox(sk), 2.35, 5.25);
   const fmin = fem.min[1], tmax = tib.max[1], R = 1.45;
   const boneM = mat('#e9e2cf', { roughness: .7, side: THREE.DoubleSide });
   const cartGood = mat(COL.cart, { roughness: .3, transparent: true, opacity: .8 });
@@ -1195,18 +1202,17 @@ const BUILD_artritis = async api => {
     }
     const box = partBox([fem, tib]); box.min.y = tmax - R; box.max.y = fmin + R;
     const pl = place(k, obj, box, 2.6, 5.2);
+    k.scale.setScalar(.43);
+    k.position.y = -1.25;
     api.g.add(k); api.rot.push(k);
     knees.push({ k, pivot, sick, swell, phase: 0 });
     return { k, pl, spur };
   }
 
-  const kn = knee(-2.4, false);
-  const ks = knee(2.4, true);
-  api.label('Lutut normal', -2.4, -2.9);
-  api.label('Artritis', 2.4, -2.9);
-  api.label('Tulang rawan tebal', ...kn.pl.at(P).add(new THREE.Vector3(0, -.75, 1.1)).toArray(), kn.k);
-  api.label('Radang & bengkak', ...ks.pl.at(P).add(new THREE.Vector3(0, 1.45, 0)).toArray(), ks.k);
-  if (ks.spur) api.label('Taji tulang', ...ks.pl.at(ks.spur).add(new THREE.Vector3(.2, -.3, .6)).toArray(), ks.k);
+  const kn = knee(-.62, false);
+  const ks = knee(.62, true);
+  api.label('Lutut kiri: normal', -.85, -2.45);
+  api.label('Lutut kanan: artritis', .95, -2.45);
 
   let last = 0;
   api.tick = t => {
@@ -1223,9 +1229,9 @@ const BUILD_artritis = async api => {
     });
   };
 };
-viewer('artritis', { hw: 4.8, hh: 3.1, cy: -.1, auto: false }, BUILD_artritis);
+viewer('artritis', { hw: 3.8, hh: 5.2, cy: -.15, auto: false }, BUILD_artritis);
 /* Kartu osteoartritis: model lutut 3D mandiri yang juga bisa diputar. */
-viewer('oaCard', { hw: 4.8, hh: 3.1, cy: -.1, auto: false }, BUILD_artritis);
+viewer('oaCard', { hw: 3.4, hh: 4.8, cy: -.15, auto: false }, BUILD_artritis);
 
 /* ---------- Model sel otot (skematis, mikroskopis) ---------- */
 function focusMats(groups) {
