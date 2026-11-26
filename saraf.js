@@ -1210,6 +1210,8 @@ const BUILD_artritis = async api => {
   };
 };
 viewer('artritis', { hw: 4.8, hh: 3.1, cy: -.1, auto: false }, BUILD_artritis);
+/* Kartu osteoartritis: model lutut 3D mandiri yang juga bisa diputar. */
+viewer('oaCard', { hw: 4.8, hh: 3.1, cy: -.1, auto: false }, BUILD_artritis);
 
 /* ---------- Model sel otot (skematis, mikroskopis) ---------- */
 function focusMats(groups) {
@@ -1441,7 +1443,7 @@ const STILL_JOBS = [
   // Kartu gerak dan tulang memakai foto anatomi sumber eksternal di index.html.
   // Jangan render ulang dari model 3D di sini agar src foto tidak tertimpa.
   { id: 'refleks', build: BUILD_body,    opt: { hw: 3.4, hh: 8.4 }, pose: cropBody(.42, .08), set: () => { bodyFocus = 'tepi'; } },
-  { id: 'oa',     build: BUILD_artritis, opt: { hw: 4.8, hh: 3.1, cy: -.1 } },
+  { id: 'tulang', build: BUILD_spine,    opt: { hw: 6.8, hh: 3.3, cy: -.15 } },
   { id: 'ra',     build: BUILD_ra,       opt: { hw: 3, hh: 2 } },
   { id: 'gout',   build: BUILD_gout,     opt: { hw: 3, hh: 2 } }
 ];
