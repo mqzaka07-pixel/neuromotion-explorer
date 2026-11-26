@@ -556,7 +556,7 @@ function viewer(name, opt, build) {
     renderer.setSize(st.w, st.h, false);
     cam.aspect = st.w / st.h;
     const cy = opt.cy || 0;
-    const z = Math.max(opt.hh / tanHalf, opt.hw / (tanHalf * cam.aspect)) * 1.08;
+    const z = Math.max(opt.hh / tanHalf, opt.hw / (tanHalf * cam.aspect)) * 1.08 * (opt.zoom || 1);
     cam.position.set(0, cy, z);
     cam.lookAt(0, cy, 0);
     cam.updateProjectionMatrix();
@@ -818,7 +818,7 @@ const BUILD_body = async api => {
 viewer('body', { hw: 3.4, hh: 8.4 }, BUILD_body);
 
 /* Kartu Beranda: model rangka manusia normal yang dirender langsung dan dapat diputar. */
-viewer('homeNormalSkeleton', { hw: 3.4, hh: 8.4, auto: false }, async api => {
+viewer('homeNormalSkeleton', { hw: 3.4, hh: 8.4, auto: false, zoom: .72 }, async api => {
   const sk = await pack('skeleton');
   const bone = mat(COL.bone, { roughness: .65 });
   place(api.g, group(sk, bone), partBox(sk), 3.4, 8.4);
