@@ -611,6 +611,8 @@ function loop(ms) {
   viewers.forEach(v => { if (v.visible && v.w) v.render(t); });
   requestAnimationFrame(loop);
 }
+/* Mulai render loop agar semua kanvas 3D benar-benar tampil. */
+requestAnimationFrame(loop);
 
 /* sorotan bagian dengan warna asli */
 function highlighter(groups, hi, allTint = 0) {
