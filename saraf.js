@@ -533,7 +533,10 @@ function viewer(name, opt, build) {
   const rim = new THREE.DirectionalLight(0x9fdcff, .45); rim.position.set(-6, 2, -6); scene.add(rim);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   el.appendChild(renderer.domElement);
-  const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = '↔ geser untuk memutar'; el.appendChild(hint);
+  const interactive = opt.interactive !== false;
+  if (interactive) {
+    const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = '↔ geser untuk memutar'; el.appendChild(hint);
+  }
   const loading = document.createElement('div'); loading.className = 'loading'; loading.textContent = 'Memuat model 3D…'; el.appendChild(loading);
 
   const st = { visible: false, ready: false, w: 0, h: 0, drag: false, idleAt: 0 };
@@ -575,17 +578,19 @@ function viewer(name, opt, build) {
   });
 
   let lx = 0, ly = 0;
-  el.addEventListener('pointerdown', e => { st.drag = true; lx = e.clientX; ly = e.clientY; el.setPointerCapture(e.pointerId); hint.style.display = 'none'; });
-  el.addEventListener('pointermove', e => {
-    if (!st.drag) return;
-    const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
-    api.rot.forEach(o => { o.rotation.y += dx * .01; });
-    const tm = opt.tiltMax ?? .5;
-    g.rotation.x = Math.max(-tm, Math.min(tm, g.rotation.x + dy * .006));
-  });
-  const end = () => { st.drag = false; st.idleAt = performance.now(); };
-  el.addEventListener('pointerup', end);
-  el.addEventListener('pointercancel', end);
+  if (interactive) {
+    el.addEventListener('pointerdown', e => { st.drag = true; lx = e.clientX; ly = e.clientY; el.setPointerCapture(e.pointerId); });
+    el.addEventListener('pointermove', e => {
+      if (!st.drag) return;
+      const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
+      api.rot.forEach(o => { o.rotation.y += dx * .01; });
+      const tm = opt.tiltMax ?? .5;
+      g.rotation.x = Math.max(-tm, Math.min(tm, g.rotation.x + dy * .006));
+    });
+    const end = () => { st.drag = false; st.idleAt = performance.now(); };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
 
   st.render = t => {
     if (!st.ready) return;
@@ -818,7 +823,7 @@ const BUILD_body = async api => {
 viewer('body', { hw: 3.4, hh: 8.4 }, BUILD_body);
 
 /* Kartu Beranda: model rangka manusia normal yang dirender langsung dan dapat diputar. */
-viewer('homeNormalSkeleton', { hw: 3.4, hh: 8.4, auto: false, zoom: .72 }, async api => {
+viewer('homeNormalSkeleton', { hw: 3.4, hh: 8.4, auto: false, interactive: false, zoom: .72 }, async api => {
   const sk = await pack('skeleton');
   const bone = mat(COL.bone, { roughness: .65 });
   place(api.g, group(sk, bone), partBox(sk), 3.4, 8.4);
