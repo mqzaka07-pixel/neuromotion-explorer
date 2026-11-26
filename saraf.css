@@ -514,3 +514,12 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
   #kelainan [data-scene="oaCard"] { height: 220px; }
   #kelainan [data-scene="artritis"] .lb { font-size: 10px; }
 }
+
+
+/* Fisura anatomy: larger full-body models and reliably clickable controls */
+#kelainan [data-scene="fisura"] { height: 560px; cursor: default; }
+#kelainan [data-scene="fisura"] canvas { pointer-events: none; }
+#kelainan [data-scene="fisura"] + .tabs { position: relative; z-index: 3; display:flex; justify-content:center; gap:.65rem; margin:1rem auto; }
+#kelainan #boneLegBtn, #kelainan #boneArmBtn, #kelainan #crackBtn { position:relative; z-index:4; min-height:48px; padding:.75rem 1.15rem; }
+#kelainan #boneLegBtn.sel, #kelainan #boneArmBtn.sel, #kelainan #crackBtn.sel { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+@media(max-width:700px){ #kelainan [data-scene="fisura"] { height:470px; } #kelainan [data-scene="fisura"] + .tabs { flex-wrap:wrap; } #kelainan #boneLegBtn, #kelainan #boneArmBtn, #kelainan #crackBtn { flex:1 1 42%; } }
