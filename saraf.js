@@ -1078,171 +1078,101 @@ const BUILD_spine = async api => {
 };
 viewer('spine', { hw: 7.7, hh: 3.4, cy: -.15 }, BUILD_spine);
 
-/* ---------- Fisura (retak tulang) pada Tulang Kaki & Tulang Lengan ---------- */
-viewer('fisura', { hw: 7.4, hh: 5.3, cy: -.15, auto: false }, async api => {
+/* ---------- Fisura: tiga anatomi rangka manusia utuh ---------- */
+viewer('fisura', { hw: 4.1, hh: 2.85, cy: 0, auto: false, interactive: false }, async api => {
   const sk = await pack('skeleton');
-  const boneNormal = mat('#e9e2cf', { roughness: .7, side: THREE.DoubleSide });
-  const boneX = glass('#7fd8ff', .3); boneX.side = THREE.DoubleSide;
-  const crackM = mat('--muscle', { emissive: new THREE.Color(cssVar('--muscle')), emissiveIntensity: .8 });
-  /* Siluet rangka transparan sebagai konteks anatomi; tulang yang dipelajari ditonjolkan di depan. */
-  const skeletonXray = glass('#8ec9e8', .10);
-  place(api.g, group(sk, skeletonXray), partBox(sk), 2.5, 5.15);
-  api.rot = [];
-  const bones = [];
-
-  function buildBoneSet(partName) {
-    const part = one(sk, partName), fg = geo(part), fb = partBox([part]);
-    const y0 = boxC(fb).y + .2, t0 = (y0 - fb.min.y) / (fb.max.y - fb.min.y);
-    const c0 = sliceCenter(part, t0 - .015, t0 + .015); c0.y = y0;
-    const rBone = Math.max(.08, Math.min(fb.max.x - fb.min.x, fb.max.z - fb.min.z) * .22);
-    const setGroup = new THREE.Group();
-    api.g.add(setGroup);
-
-    function crack(yc, a0, a1, wob, seed) {
-      const pts = [];
-      for (let i = 0; i <= 46; i++) {
-        const a = a0 + (a1 - a0) * i / 46;
-        const j = Math.sin(i * 7.3 + seed) * .025 + Math.sin(i * 2.1 + seed) * .015;
-        const y = yc + Math.sin(a * 1.5) * wob + j;
-        const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
-        const hit = surfaceHit(fg, new THREE.Vector3(c0.x, y, c0.z), dir);
-        if (hit) pts.push(hit.add(dir.multiplyScalar(.012)).toArray());
+  const positions = [-2.65, 0, 2.65], states = ['normal', 'fisura', 'fraktur'];
+  const names = ['NORMAL', 'FISURA / RETAK', 'FRAKTUR / PATAH'];
+  const target = { leg: /^(left|right) femur$/i, arm: /^(left|right) humerus$/i };
+  const mats = {
+    body: mat('#e9e2cf', { roughness: .68, side: THREE.DoubleSide }),
+    normal: mat('#f0e7d5', { roughness: .62, side: THREE.DoubleSide }),
+    fissure: mat('#e9a45c', { roughness: .55, side: THREE.DoubleSide }),
+    fracture: mat('#e87562', { roughness: .52, side: THREE.DoubleSide }),
+    xray: glass('#83dfff', .48)
+  };
+  const crackM = mat('#ff604d', { emissive: new THREE.Color('#ff4936'), emissiveIntensity: .7 });
+  const models = [];
+  function makeBody(state, x) {
+    const human = group(sk, mats.body), studyMeshes = [];
+    human.traverse(o => {
+      if (!o.isMesh || !o.userData.part) return;
+      const n = o.userData.part;
+      if (target.leg.test(n) || target.arm.test(n)) {
+        o.userData.studyBone = true; o.userData.partName = n; studyMeshes.push(o);
       }
-      return tube(pts, .022, crackM, 140);
-    }
-    const jag = p => y0 + .06 * Math.sin(3 * Math.atan2(p.z - c0.z, p.x - c0.x)) + .03 * Math.sin(7 * Math.atan2(p.z - c0.z, p.x - c0.x));
-
-    let crackLabel = null;
-    [-3.1, 0, 3.1].forEach((x, i) => {
-      const h = new THREE.Group(); h.position.x = x; setGroup.add(h); api.rot.push(h);
-      const obj = new THREE.Group();
-      if (i < 2) {
-        const b = mesh(fg, boneNormal); obj.add(b); bones.push(b);
-        if (i === 1) { obj.add(crack(y0, -.4, 3.4, .14, 1)); obj.add(crack(y0 + .28, 1.2, 2.3, .06, 4)); }
-      } else {
-        const low = mesh(subGeo(fg, p => p.y < jag(p)), boneNormal);
-        const topP = new THREE.Group(); topP.position.copy(c0).add(new THREE.Vector3(.14, .26, 0)); topP.rotation.z = -.2;
-        const top = mesh(subGeo(fg, p => p.y >= jag(p)), boneNormal); top.position.copy(c0).negate(); topP.add(top);
-        const ring = mesh(new THREE.TorusGeometry(rBone, .014, 8, 32).rotateX(Math.PI / 2), crackM, c0.x, y0, c0.z);
-        obj.add(low, topP, ring); bones.push(low, top);
-      }
-      /* Tampilkan pasangan kiri-kanan untuk setiap kondisi tulang. */
-      const pair = new THREE.Group();
-      pair.add(obj);
-      const opposite = obj.clone();
-      opposite.scale.x = -1;
-      opposite.position.x = .34;
-      pair.add(opposite);
-      pair.traverse(o => { if (o.isMesh && (o.material === boneNormal || o.material === boneX)) bones.push(o); });
-      const pl = place(h, pair, fb, 1.75, 4.4);
-      if (i === 1) crackLabel = api.label('Garis retakan', ...pl.at(c0).add(new THREE.Vector3(1.05, .55, 0)).toArray(), h);
     });
-    return { setGroup, crackLabel };
+    const marks = { leg: new THREE.Group(), arm: new THREE.Group() };
+    human.add(marks.leg, marks.arm);
+    if (state !== 'normal') for (const type of ['leg', 'arm']) {
+      sk.filter(p => target[type].test(p.n)).forEach(p => {
+        const b = partBox([p]), c = boxC(b), size = boxS(b);
+        const radius = Math.max(.045, Math.min(size.x, size.z) * .72);
+        const addMark = y => {
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, .018, 8, 28), crackM);
+          ring.rotation.x = Math.PI / 2; ring.position.set(c.x, y, c.z); marks[type].add(ring);
+        };
+        if (state === 'fisura') addMark(c.y);
+        else { addMark(c.y - size.y * .035); addMark(c.y + size.y * .035); }
+      });
+    }
+    const holder = new THREE.Group();
+    place(holder, human, partBox(sk), 1.5, 4.55);
+    holder.position.x = x; api.g.add(holder);
+    models.push({ human, marks, studyMeshes, state });
   }
-
-  const legSet = buildBoneSet('right femur');
-  const armSet = buildBoneSet('right humerus');
-
-  api.label('Normal • kiri & kanan', -3.1, -2.8);
-  api.label('Fisura • kiri & kanan', 0, -2.8);
-  api.label('Fraktur • kiri & kanan', 3.1, -2.8);
-
+  states.forEach((state, i) => makeBody(state, positions[i]));
+  positions.forEach((x, i) => api.label(names[i], x, -2.48));
   api.tick = t => {
-    const isLeg = fisuraBone === 'leg';
-    legSet.setGroup.visible = isLeg;
-    armSet.setGroup.visible = !isLeg;
-    if (legSet.crackLabel) legSet.crackLabel.show = isLeg;
-    if (armSet.crackLabel) armSet.crackLabel.show = !isLeg;
-    bones.forEach(b => { b.material = xray ? boneX : boneNormal; });
-    crackM.emissiveIntensity = (xray ? 1.6 : .7) + .4 * Math.sin(t * 4);
+    models.forEach(model => {
+      model.marks.leg.visible = fisuraBone === 'leg';
+      model.marks.arm.visible = fisuraBone === 'arm';
+      model.studyMeshes.forEach(o => {
+        const selected = target[fisuraBone].test(o.userData.partName);
+        o.material = xray ? mats.xray : !selected ? mats.body :
+          mats[model.state === 'normal' ? 'normal' : model.state === 'fisura' ? 'fissure' : 'fracture'];
+      });
+    });
+    crackM.emissiveIntensity = .65 + .2 * Math.sin(t * 3.5);
   };
 });
 
-/* ---------- Artritis (radang sendi lutut) ---------- */
+/* ---------- Artritis: rangka manusia utuh, lutut kiri dan kanan dibandingkan ---------- */
 const BUILD_artritis = async api => {
   const sk = await pack('skeleton');
-  const B = n => one(sk, n);
-  const fem = B('right femur'), tib = B('right tibia'), fib = B('right fibula'), pat = B('right patella');
-  const fullBodyMat = glass(COL.bone, .13);
-  place(api.g, group(sk, fullBodyMat), partBox(sk), 2.35, 5.25);
-  const fmin = fem.min[1], tmax = tib.max[1], R = 1.45;
-  const boneM = mat('#e9e2cf', { roughness: .7, side: THREE.DoubleSide });
-  const cartGood = mat(COL.cart, { roughness: .3, transparent: true, opacity: .8 });
-  const cartBad = mat(COL.cart, { roughness: .85, transparent: true, opacity: .45 });
-  const spurM = mat('#d8c9a3', { roughness: .9 });
-  const inflame = mat('--muscle', { transparent: true, opacity: .2, depthWrite: false, emissive: new THREE.Color(cssVar('--muscle')), emissiveIntensity: .5 });
-  const femG = subGeo(geo(fem), p => p.y < fmin + R);
-  const tibG = subGeo(geo(tib), p => p.y > tmax - R);
-  const fibG = subGeo(geo(fib), p => p.y > tmax - R);
-  const P = sliceCenter(fem, 0, .035); P.y = fmin + .22;
-  const tc = sliceCenter(tib, .965, 1);
-  api.rot = [];
-  const knees = [];
-
-  function knee(x, sick) {
-    const k = new THREE.Group(); k.position.x = x; k.rotation.y = 1.1;
-    const obj = new THREE.Group();
-    const th = sick ? .009 : .035;
-    obj.add(mesh(femG, boneM), mesh(geo(pat), boneM));
-    obj.add(mesh(subGeo(inflate(geo(fem), th), p => p.y < fmin + .3), sick ? cartBad : cartGood));
-    const pivot = new THREE.Group(); pivot.position.copy(P); obj.add(pivot);
-    const low = new THREE.Group(); low.position.copy(P).negate(); pivot.add(low);
-    low.add(mesh(tibG, boneM), mesh(fibG, boneM));
-    low.add(mesh(subGeo(inflate(geo(tib), th), (p, n) => p.y > tmax - .08 && n.y > .45), sick ? cartBad : cartGood));
-    let swell = null, spur = null;
-    if (sick) {
-      const spurAt = (geoB, ctr, y, parent, i) => {
-        const a = i / 9 * Math.PI * 2, dir = new THREE.Vector3(Math.cos(a), -.15, Math.sin(a)).normalize();
-        const hit = surfaceHit(geoB, new THREE.Vector3(ctr.x, y, ctr.z), new THREE.Vector3(dir.x, 0, dir.z));
-        if (!hit) return null;
-        const c = mesh(new THREE.ConeGeometry(.035, .12, 8).translate(0, .05, 0), spurM);
-        c.position.copy(hit); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-        parent.add(c);
-        return hit;
-      };
-      for (let i = 0; i < 9; i++) { const h = spurAt(geo(tib), tc, tmax - .05, low, i); if (h && i === 0) spur = h; }
-      for (let i = 0; i < 9; i += 2) spurAt(geo(fem), P, fmin + .14, obj, i + .5);
-      for (let i = 0; i < 6; i++) {
-        const from = P.clone().add(new THREE.Vector3(Math.cos(i * 1.3) * .25, 0, Math.sin(i * 1.3) * .2));
-        const hit = hitsAlong(geo(fem), from, new THREE.Vector3(0, -1, 0))[0];
-        if (hit) obj.add(mesh(new THREE.SphereGeometry(.03, 8, 6), mat('#8b2a1f'), hit.x, hit.y - .006, hit.z));
-      }
-      swell = mesh(new THREE.SphereGeometry(.62, 28, 20), inflame, P.x, P.y - .12, P.z);
-      swell.scale.set(1, 1.25, 1);
-      obj.add(swell);
-    }
-    const box = partBox([fem, tib]); box.min.y = tmax - R; box.max.y = fmin + R;
-    const pl = place(k, obj, box, 2.6, 5.2);
-    k.scale.setScalar(.43);
-    k.position.y = -1.25;
-    api.g.add(k); api.rot.push(k);
-    knees.push({ k, pivot, sick, swell, phase: 0 });
-    return { k, pl, spur };
+  const bodyBone = mat('#e3e0d7', { roughness: .7, side: THREE.DoubleSide });
+  const leftBone = mat('#72c9ed', { roughness: .5, side: THREE.DoubleSide, emissive: new THREE.Color('#2d9bc4'), emissiveIntensity: .2 });
+  const rightBone = mat('#e88776', { roughness: .5, side: THREE.DoubleSide, emissive: new THREE.Color('#a93e35'), emissiveIntensity: .22 });
+  const human = group(sk, part => {
+    const n = part.n.toLowerCase();
+    if (/^left (femur|tibia|fibula|patella)$/.test(n)) return leftBone;
+    if (/^right (femur|tibia|fibula|patella)$/.test(n)) return rightBone;
+    return bodyBone;
+  });
+  const holder = new THREE.Group();
+  place(holder, human, partBox(sk), 2.2, 4.75);
+  api.g.add(holder); api.rot = [holder];
+  function kneeCenter(side) {
+    const fem = sk.find(p => p.n.toLowerCase() === side + ' femur');
+    const tib = sk.find(p => p.n.toLowerCase() === side + ' tibia');
+    if (!fem || !tib) return new THREE.Vector3();
+    return boxC(partBox([fem])).add(boxC(partBox([tib]))).multiplyScalar(.5);
   }
-
-  const kn = knee(-.62, false);
-  const ks = knee(.62, true);
-  api.label('Lutut kiri: normal', -.85, -2.45);
-  api.label('Lutut kanan: artritis', .95, -2.45);
-
-  let last = 0;
+  const leftHalo = new THREE.Mesh(new THREE.SphereGeometry(.16, 20, 16),
+    mat('#58c5ec', { transparent: true, opacity: .38, emissive: new THREE.Color('#3ab6e7'), emissiveIntensity: .5, depthWrite: false }));
+  const rightHalo = new THREE.Mesh(new THREE.SphereGeometry(.19, 20, 16),
+    mat('#f06e5e', { transparent: true, opacity: .48, emissive: new THREE.Color('#ec5948'), emissiveIntensity: .65, depthWrite: false }));
+  leftHalo.position.copy(kneeCenter('left')); rightHalo.position.copy(kneeCenter('right'));
+  human.add(leftHalo, rightHalo);
+  api.label('LUTUT KIRI • NORMAL', -1.18, -2.48);
+  api.label('LUTUT KANAN • ARTRITIS', 1.18, -2.48);
   api.tick = t => {
-    const dt = Math.min(.05, t - last); last = t;
-    knees.forEach(n => {
-      if (kneeMoving && !reduceMotion) n.phase += dt;
-      const wave = .5 - .5 * Math.cos(n.phase * 1.4);
-      n.pivot.rotation.x = n.sick ? .32 * wave + .02 * Math.sin(n.phase * 23) * wave : 1.25 * wave;
-      if (n.swell) {
-        const p = 1 + .05 * Math.sin(t * 3);
-        n.swell.scale.set(p, 1.25 * p, p);
-        inflame.emissiveIntensity = .4 + .3 * Math.sin(t * 3);
-      }
-    });
+    const pulse = 1 + (kneeMoving && !reduceMotion ? .055 * Math.sin(t * 3.2) : 0);
+    leftHalo.scale.setScalar(pulse); rightHalo.scale.setScalar(pulse);
   };
 };
-viewer('artritis', { hw: 3.8, hh: 5.2, cy: -.15, auto: false }, BUILD_artritis);
-/* Kartu osteoartritis: model lutut 3D mandiri yang juga bisa diputar. */
-viewer('oaCard', { hw: 3.4, hh: 4.8, cy: -.15, auto: false }, BUILD_artritis);
+viewer('artritis', { hw: 2.45, hh: 2.9, cy: 0, auto: false, interactive: false }, BUILD_artritis);
+viewer('oaCard', { hw: 2.35, hh: 2.9, cy: 0, auto: false, interactive: false }, BUILD_artritis);
 
 /* ---------- Model sel otot (skematis, mikroskopis) ---------- */
 function focusMats(groups) {
