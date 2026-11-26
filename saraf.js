@@ -1078,101 +1078,136 @@ const BUILD_spine = async api => {
 };
 viewer('spine', { hw: 7.7, hh: 3.4, cy: -.15 }, BUILD_spine);
 
-/* ---------- Fisura: tiga anatomi rangka manusia utuh ---------- */
-viewer('fisura', { hw: 4.1, hh: 2.85, cy: 0, auto: false, interactive: false }, async api => {
+/* ---------- Fisura: tiga model anatomi manusia utuh dengan cedera pada tulang sasaran ---------- */
+viewer('fisura', { hw: 4.45, hh: 3.25, cy: 0, auto: false, interactive: false }, async api => {
   const sk = await pack('skeleton');
-  const positions = [-2.65, 0, 2.65], states = ['normal', 'fisura', 'fraktur'];
+  const states = ['normal', 'fisura', 'fraktur'];
   const names = ['NORMAL', 'FISURA / RETAK', 'FRAKTUR / PATAH'];
-  const target = { leg: /^(left|right) femur$/i, arm: /^(left|right) humerus$/i };
-  const mats = {
-    body: mat('#e9e2cf', { roughness: .68, side: THREE.DoubleSide }),
-    normal: mat('#f0e7d5', { roughness: .62, side: THREE.DoubleSide }),
-    fissure: mat('#e9a45c', { roughness: .55, side: THREE.DoubleSide }),
-    fracture: mat('#e87562', { roughness: .52, side: THREE.DoubleSide }),
-    xray: glass('#83dfff', .48)
+  const xPositions = [-2.8, 0, 2.8];
+  const target = {
+    leg: /^(left|right) femur$/i,
+    arm: /^(left|right) humerus$/i
   };
-  const crackM = mat('#ff604d', { emissive: new THREE.Color('#ff4936'), emissiveIntensity: .7 });
+  const fissureMat = mat('#f0a04b', { roughness: .5, emissive: new THREE.Color('#b85b20'), emissiveIntensity: .22 });
+  const fractureMat = mat('#ed685c', { roughness: .48, emissive: new THREE.Color('#a82e29'), emissiveIntensity: .25 });
+  const xrayMat = glass('#82dfff', .58);
+  const crackMat = mat('#ff624e', { emissive: new THREE.Color('#ff382b'), emissiveIntensity: .9 });
   const models = [];
-  function makeBody(state, x) {
-    const human = group(sk, mats.body), studyMeshes = [];
-    human.traverse(o => {
+
+  for (let i = 0; i < states.length; i++) {
+    const localApi = { g: new THREE.Group(), frame: () => {} };
+    const human = await buildHuman(localApi, 'hero');
+    human.L.organ.visible = false;
+    human.L.saraf.visible = false;
+    human.L.kulit.visible = true;
+    human.L.kulit.material.transparent = true;
+    human.L.kulit.material.opacity = .32;
+    human.L.kulit.material.depthWrite = false;
+
+    const targetMeshes = [];
+    human.L.kerangka.traverse(o => {
       if (!o.isMesh || !o.userData.part) return;
-      const n = o.userData.part;
-      if (target.leg.test(n) || target.arm.test(n)) {
-        o.userData.studyBone = true; o.userData.partName = n; studyMeshes.push(o);
-      }
+      const partName = o.userData.part.n || '';
+      o.userData.baseBoneMaterial = o.material;
+      o.userData.partName = partName;
+      if (target.leg.test(partName) || target.arm.test(partName)) targetMeshes.push(o);
     });
-    const marks = { leg: new THREE.Group(), arm: new THREE.Group() };
-    human.add(marks.leg, marks.arm);
-    if (state !== 'normal') for (const type of ['leg', 'arm']) {
-      sk.filter(p => target[type].test(p.n)).forEach(p => {
-        const b = partBox([p]), c = boxC(b), size = boxS(b);
-        const radius = Math.max(.045, Math.min(size.x, size.z) * .72);
-        const addMark = y => {
-          const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, .018, 8, 28), crackM);
-          ring.rotation.x = Math.PI / 2; ring.position.set(c.x, y, c.z); marks[type].add(ring);
-        };
-        if (state === 'fisura') addMark(c.y);
-        else { addMark(c.y - size.y * .035); addMark(c.y + size.y * .035); }
-      });
+
+    const marks = new THREE.Group();
+    localApi.g.add(marks);
+    if (states[i] !== 'normal') {
+      for (const kind of ['leg', 'arm']) {
+        human.sk.filter(p => target[kind].test(p.n)).forEach(p => {
+          const bounds = partBox([p]), center = boxC(bounds), size = boxS(bounds);
+          const radius = Math.max(.055, Math.min(size.x, size.z) * .82);
+          const addRing = y => {
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, .022, 10, 32), crackMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.set(...human.at(center).map((v, axis) => axis === 1 ? v + (y - center.y) : v));
+            marks.add(ring);
+          };
+          if (states[i] === 'fisura') addRing(center.y);
+          else {
+            addRing(center.y - size.y * .035);
+            addRing(center.y + size.y * .035);
+          }
+        });
+      }
     }
+
+    const box = new THREE.Box3().setFromObject(localApi.g);
     const holder = new THREE.Group();
-    place(holder, human, partBox(sk), 1.5, 4.55);
-    holder.position.x = x; api.g.add(holder);
-    models.push({ human, marks, studyMeshes, state });
+    place(holder, localApi.g, box, 1.35, 4.55, false);
+    holder.position.x = xPositions[i];
+    api.g.add(holder);
+    models.push({ human, marks, targetMeshes, state: states[i] });
   }
-  states.forEach((state, i) => makeBody(state, positions[i]));
-  positions.forEach((x, i) => api.label(names[i], x, -2.48));
+
+  xPositions.forEach((x, i) => api.label(names[i], x, -2.55));
   api.tick = t => {
     models.forEach(model => {
-      model.marks.leg.visible = fisuraBone === 'leg';
-      model.marks.arm.visible = fisuraBone === 'arm';
-      model.studyMeshes.forEach(o => {
-        const selected = target[fisuraBone].test(o.userData.partName);
-        o.material = xray ? mats.xray : !selected ? mats.body :
-          mats[model.state === 'normal' ? 'normal' : model.state === 'fisura' ? 'fissure' : 'fracture'];
+      model.marks.visible = model.state !== 'normal' && (fisuraBone === 'leg' || fisuraBone === 'arm');
+      model.human.L.kulit.material.opacity = xray ? .055 : .32;
+      model.human.L.kerangka.traverse(o => {
+        if (!o.isMesh || !o.userData.part) return;
+        if (xray) o.material = xrayMat;
+        else {
+          const selected = target[fisuraBone].test(o.userData.partName || '');
+          o.material = selected && model.state === 'fisura' ? fissureMat
+            : selected && model.state === 'fraktur' ? fractureMat
+            : o.userData.baseBoneMaterial;
+        }
       });
     });
-    crackM.emissiveIntensity = .65 + .2 * Math.sin(t * 3.5);
+    crackMat.emissiveIntensity = .75 + .2 * Math.sin(t * 3.4);
   };
 });
 
-/* ---------- Artritis: rangka manusia utuh, lutut kiri dan kanan dibandingkan ---------- */
+/* ---------- Artritis dan osteoartritis: anatomi manusia utuh dengan sorotan sendi lutut ---------- */
 const BUILD_artritis = async api => {
-  const sk = await pack('skeleton');
-  const bodyBone = mat('#e3e0d7', { roughness: .7, side: THREE.DoubleSide });
-  const leftBone = mat('#72c9ed', { roughness: .5, side: THREE.DoubleSide, emissive: new THREE.Color('#2d9bc4'), emissiveIntensity: .2 });
-  const rightBone = mat('#e88776', { roughness: .5, side: THREE.DoubleSide, emissive: new THREE.Color('#a93e35'), emissiveIntensity: .22 });
-  const human = group(sk, part => {
-    const n = part.n.toLowerCase();
-    if (/^left (femur|tibia|fibula|patella)$/.test(n)) return leftBone;
-    if (/^right (femur|tibia|fibula|patella)$/.test(n)) return rightBone;
-    return bodyBone;
+  const human = await buildHuman(api, 'hero');
+  human.L.organ.visible = false;
+  human.L.saraf.visible = false;
+  human.L.kulit.visible = true;
+  human.L.kulit.material.transparent = true;
+  human.L.kulit.material.opacity = .3;
+  human.L.kulit.material.depthWrite = false;
+
+  const normalJoint = mat('#62c8ef', { transparent: true, opacity: .72, emissive: new THREE.Color('#35b6e8'), emissiveIntensity: .5, depthWrite: false });
+  const arthritisJoint = mat('#ef7667', { transparent: true, opacity: .78, emissive: new THREE.Color('#e74e3c'), emissiveIntensity: .65, depthWrite: false });
+  const normalBone = mat('#77cbed', { roughness: .48, emissive: new THREE.Color('#2d9bc4'), emissiveIntensity: .16 });
+  const inflamedBone = mat('#e88776', { roughness: .48, emissive: new THREE.Color('#a93e35'), emissiveIntensity: .2 });
+
+  human.L.kerangka.traverse(o => {
+    if (!o.isMesh || !o.userData.part) return;
+    const name = (o.userData.part.n || '').toLowerCase();
+    o.userData.baseBoneMaterial = o.material;
+    if (/^left (femur|tibia|fibula|patella)$/.test(name)) o.material = normalBone;
+    if (/^right (femur|tibia|fibula|patella)$/.test(name)) o.material = inflamedBone;
   });
-  const holder = new THREE.Group();
-  place(holder, human, partBox(sk), 2.2, 4.75);
-  api.g.add(holder); api.rot = [holder];
-  function kneeCenter(side) {
-    const fem = sk.find(p => p.n.toLowerCase() === side + ' femur');
-    const tib = sk.find(p => p.n.toLowerCase() === side + ' tibia');
+
+  const centerAt = side => {
+    const fem = human.sk.find(p => p.n.toLowerCase() === side + ' femur');
+    const tib = human.sk.find(p => p.n.toLowerCase() === side + ' tibia');
     if (!fem || !tib) return new THREE.Vector3();
-    return boxC(partBox([fem])).add(boxC(partBox([tib]))).multiplyScalar(.5);
-  }
-  const leftHalo = new THREE.Mesh(new THREE.SphereGeometry(.16, 20, 16),
-    mat('#58c5ec', { transparent: true, opacity: .38, emissive: new THREE.Color('#3ab6e7'), emissiveIntensity: .5, depthWrite: false }));
-  const rightHalo = new THREE.Mesh(new THREE.SphereGeometry(.19, 20, 16),
-    mat('#f06e5e', { transparent: true, opacity: .48, emissive: new THREE.Color('#ec5948'), emissiveIntensity: .65, depthWrite: false }));
-  leftHalo.position.copy(kneeCenter('left')); rightHalo.position.copy(kneeCenter('right'));
-  human.add(leftHalo, rightHalo);
-  api.label('LUTUT KIRI • NORMAL', -1.18, -2.48);
-  api.label('LUTUT KANAN • ARTRITIS', 1.18, -2.48);
+    const center = boxC(partBox([fem])).add(boxC(partBox([tib]))).multiplyScalar(.5);
+    return new THREE.Vector3(...human.at(center));
+  };
+  const leftCenter = centerAt('left'), rightCenter = centerAt('right');
+  const leftHalo = new THREE.Mesh(new THREE.SphereGeometry(.2, 24, 18), normalJoint);
+  const rightHalo = new THREE.Mesh(new THREE.SphereGeometry(.24, 24, 18), arthritisJoint);
+  leftHalo.position.copy(leftCenter);
+  rightHalo.position.copy(rightCenter);
+  api.g.add(leftHalo, rightHalo);
+
   api.tick = t => {
     const pulse = 1 + (kneeMoving && !reduceMotion ? .055 * Math.sin(t * 3.2) : 0);
-    leftHalo.scale.setScalar(pulse); rightHalo.scale.setScalar(pulse);
+    leftHalo.scale.setScalar(pulse);
+    rightHalo.scale.setScalar(pulse);
   };
 };
-viewer('artritis', { hw: 2.45, hh: 2.9, cy: 0, auto: false, interactive: false }, BUILD_artritis);
-viewer('oaCard', { hw: 2.35, hh: 2.9, cy: 0, auto: false, interactive: false }, BUILD_artritis);
+viewer('artritis', { hw: 3.0, hh: 4.65, cy: 0, auto: false, interactive: false }, BUILD_artritis);
+viewer('oaCard', { hw: 2.35, hh: 4.65, cy: 0, auto: false, interactive: false }, BUILD_artritis);
 
 /* ---------- Model sel otot (skematis, mikroskopis) ---------- */
 function focusMats(groups) {
