@@ -91,7 +91,7 @@ nav a[aria-current="page"] { color: #0b1622; background: var(--nerve); }
 .hero-banner {
   background:
     linear-gradient(90deg, rgba(11, 22, 34, 0.93) 0%, rgba(11, 22, 34, 0.80) 38%, rgba(11, 22, 34, 0.28) 72%, rgba(11, 22, 34, 0.14) 100%),
-    url('https://www.ciee.org/sites/default/files/images/2023-11/business-meeting-bright-room.jpg') center/cover no-repeat;
+    url('https://images.unsplash.com/photo-1758873269317-51888e824b28?auto=format&fit=crop&w=2000&q=85') center/cover no-repeat;
   border-bottom: 1px solid var(--line);
   padding: 2.5rem 0;
   margin-bottom: 2rem;
