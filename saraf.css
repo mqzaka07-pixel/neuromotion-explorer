@@ -458,3 +458,14 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
   .bone-care-item b { font-size: .8rem; }
   .bone-care-item p { font-size: .72rem; }
 }
+
+
+/* Force visible layout for the bone-care illustrations on the deployed page. */
+#kelainan .bone-care { display: block !important; }
+#kelainan .bone-care-heading { display: flex !important; }
+#kelainan .bone-care-grid { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 12px !important; margin-top: 16px !important; }
+#kelainan .bone-care-item { display: block !important; min-width: 0; }
+#kelainan .bone-care-item svg { display: block !important; width: 100% !important; height: 112px !important; visibility: visible !important; opacity: 1 !important; }
+#kelainan .bone-care-item b, #kelainan .bone-care-item p { display: block !important; visibility: visible !important; }
+@media (max-width: 900px) { #kelainan .bone-care-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+@media (max-width: 480px) { #kelainan .bone-care-item svg { height: 92px !important; } }
