@@ -106,11 +106,10 @@ function setArm(bend) {
 $('#bend').addEventListener('click', () => setArm(true));
 $('#straight').addEventListener('click', () => setArm(false));
 
-let fisuraBone = localStorage.getItem('neuromotion-fisura-bone') === 'arm' ? 'arm' : 'leg';
+let fisuraBone = 'leg';
 let xray = false;
 function setFisuraBone(type) {
   fisuraBone = type;
-  localStorage.setItem('neuromotion-fisura-bone', type);
   $('#boneLegBtn').classList.toggle('sel', type === 'leg');
   $('#boneArmBtn').classList.toggle('sel', type === 'arm');
   $('#fisuraCap').textContent = type === 'leg'
@@ -119,11 +118,6 @@ function setFisuraBone(type) {
 }
 $('#boneLegBtn').addEventListener('click', () => setFisuraBone('leg'));
 $('#boneArmBtn').addEventListener('click', () => setFisuraBone('arm'));
-$('#boneLegBtn').classList.toggle('sel', fisuraBone === 'leg');
-$('#boneArmBtn').classList.toggle('sel', fisuraBone === 'arm');
-$('#fisuraCap').textContent = fisuraBone === 'leg'
-  ? 'Anatomi rangka manusia: tulang paha kiri dan kanan disorot. Normal, fisura (retak halus), dan fraktur (patah) dibandingkan dari kiri ke kanan.'
-  : 'Anatomi rangka manusia: tulang lengan atas kiri dan kanan disorot. Normal, fisura (retak halus), dan fraktur (patah) dibandingkan dari kiri ke kanan.';
 
 $('#crackBtn').addEventListener('click', e => {
   xray = !xray;
@@ -1084,91 +1078,84 @@ const BUILD_spine = async api => {
 };
 viewer('spine', { hw: 7.7, hh: 3.4, cy: -.15 }, BUILD_spine);
 
-/* ---------- Fisura: anatomi rangka manusia dengan tulang pilihan disorot ---------- */
-viewer('fisura', { hw: 7.6, hh: 5.5, cy: -.1, auto: false }, async api => {
+/* ---------- Fisura (retak tulang) pada Tulang Kaki & Tulang Lengan ---------- */
+viewer('fisura', { hw: 7.4, hh: 5.3, cy: -.15, auto: false }, async api => {
   const sk = await pack('skeleton');
-  const boneNormal = mat('#eee6d5', { roughness: .62, side: THREE.DoubleSide });
-  const boneX = glass('#75d9ff', .48); boneX.side = THREE.DoubleSide;
-  const contextBone = glass('#8ec9e8', .22);
-  const crackM = mat('#ff765e', { emissive: new THREE.Color('#ff4e3b'), emissiveIntensity: .8 });
+  const boneNormal = mat('#e9e2cf', { roughness: .7, side: THREE.DoubleSide });
+  const boneX = glass('#7fd8ff', .3); boneX.side = THREE.DoubleSide;
+  const crackM = mat('--muscle', { emissive: new THREE.Color(cssVar('--muscle')), emissiveIntensity: .8 });
+  /* Siluet rangka transparan sebagai konteks anatomi; tulang yang dipelajari ditonjolkan di depan. */
+  const skeletonXray = glass('#8ec9e8', .10);
+  place(api.g, group(sk, skeletonXray), partBox(sk), 2.5, 5.15);
   api.rot = [];
+  const bones = [];
 
-  function isTarget(p, type) {
-    return type === 'leg'
-      ? /^(left|right) femur$/i.test(p.n)
-      : /^(left|right) humerus$/i.test(p.n);
-  }
-  function makeHuman(x, state, type) {
-    const figure = group(sk, p => isTarget(p, type) ? boneNormal : contextBone);
-    const targets = [];
-    figure.traverse(o => {
-      if (o.isMesh && o.userData.part && isTarget(o.userData.part, type)) targets.push(o);
+  function buildBoneSet(partName) {
+    const part = one(sk, partName), fg = geo(part), fb = partBox([part]);
+    const y0 = boxC(fb).y + .2, t0 = (y0 - fb.min.y) / (fb.max.y - fb.min.y);
+    const c0 = sliceCenter(part, t0 - .015, t0 + .015); c0.y = y0;
+    const rBone = Math.max(.08, Math.min(fb.max.x - fb.min.x, fb.max.z - fb.min.z) * .22);
+    const setGroup = new THREE.Group();
+    api.g.add(setGroup);
+
+    function crack(yc, a0, a1, wob, seed) {
+      const pts = [];
+      for (let i = 0; i <= 46; i++) {
+        const a = a0 + (a1 - a0) * i / 46;
+        const j = Math.sin(i * 7.3 + seed) * .025 + Math.sin(i * 2.1 + seed) * .015;
+        const y = yc + Math.sin(a * 1.5) * wob + j;
+        const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+        const hit = surfaceHit(fg, new THREE.Vector3(c0.x, y, c0.z), dir);
+        if (hit) pts.push(hit.add(dir.multiplyScalar(.012)).toArray());
+      }
+      return tube(pts, .022, crackM, 140);
+    }
+    const jag = p => y0 + .06 * Math.sin(3 * Math.atan2(p.z - c0.z, p.x - c0.x)) + .03 * Math.sin(7 * Math.atan2(p.z - c0.z, p.x - c0.x));
+
+    let crackLabel = null;
+    [-3.1, 0, 3.1].forEach((x, i) => {
+      const h = new THREE.Group(); h.position.x = x; setGroup.add(h); api.rot.push(h);
+      const obj = new THREE.Group();
+      if (i < 2) {
+        const b = mesh(fg, boneNormal); obj.add(b); bones.push(b);
+        if (i === 1) { obj.add(crack(y0, -.4, 3.4, .14, 1)); obj.add(crack(y0 + .28, 1.2, 2.3, .06, 4)); }
+      } else {
+        const low = mesh(subGeo(fg, p => p.y < jag(p)), boneNormal);
+        const topP = new THREE.Group(); topP.position.copy(c0).add(new THREE.Vector3(.14, .26, 0)); topP.rotation.z = -.2;
+        const top = mesh(subGeo(fg, p => p.y >= jag(p)), boneNormal); top.position.copy(c0).negate(); topP.add(top);
+        const ring = mesh(new THREE.TorusGeometry(rBone, .014, 8, 32).rotateX(Math.PI / 2), crackM, c0.x, y0, c0.z);
+        obj.add(low, topP, ring); bones.push(low, top);
+      }
+      /* Tampilkan pasangan kiri-kanan untuk setiap kondisi tulang. */
+      const pair = new THREE.Group();
+      pair.add(obj);
+      const opposite = obj.clone();
+      opposite.scale.x = -1;
+      opposite.position.x = .34;
+      pair.add(opposite);
+      pair.traverse(o => { if (o.isMesh && (o.material === boneNormal || o.material === boneX)) bones.push(o); });
+      const pl = place(h, pair, fb, 1.75, 4.4);
+      if (i === 1) crackLabel = api.label('Garis retakan', ...pl.at(c0).add(new THREE.Vector3(1.05, .55, 0)).toArray(), h);
     });
-
-    /* Penanda merah berada pada lokasi tulang paha/lengan di dalam anatomi utuh. */
-    sk.filter(p => isTarget(p, type)).forEach(p => {
-      const b = partBox([p]), center = boxC(b), size = boxS(b);
-      const radius = Math.max(.075, Math.min(size.x, size.z) * .46);
-      const addMark = y => {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, .022, 8, 28), crackM);
-        ring.rotation.x = Math.PI / 2;
-        ring.position.set(center.x, y, center.z);
-        figure.add(ring);
-      };
-      if (state === 'fisura') addMark(center.y);
-      if (state === 'fraktur') { addMark(center.y - size.y * .035); addMark(center.y + size.y * .035); }
-    });
-
-    const holder = new THREE.Group();
-    place(holder, figure, partBox(sk), 2.0, 4.65);
-    holder.position.x = x;
-    api.g.add(holder);
-    api.rot.push(holder);
-    targets.forEach(o => { o.material = xray ? boneX : boneNormal; });
-    return targets;
+    return { setGroup, crackLabel };
   }
 
-  let targetMeshes = [];
-  const positions = [-2.5, 0, 2.5];
-  const states = ['normal', 'fisura', 'fraktur'];
-  const labels = ['NORMAL', 'FISURA', 'FRAKTUR'];
-  states.forEach((state, i) => {
-    targetMeshes.push(...makeHuman(positions[i], state, fisuraBone));
-    api.label(labels[i], positions[i], -2.65);
-  });
+  const legSet = buildBoneSet('right femur');
+  const armSet = buildBoneSet('right humerus');
+
+  api.label('Normal • kiri & kanan', -3.1, -2.8);
+  api.label('Fisura • kiri & kanan', 0, -2.8);
+  api.label('Fraktur • kiri & kanan', 3.1, -2.8);
 
   api.tick = t => {
-    targetMeshes.forEach(o => { o.material = xray ? boneX : boneNormal; });
-    crackM.emissiveIntensity = (xray ? 1.25 : .65) + .22 * Math.sin(t * 3.5);
+    const isLeg = fisuraBone === 'leg';
+    legSet.setGroup.visible = isLeg;
+    armSet.setGroup.visible = !isLeg;
+    if (legSet.crackLabel) legSet.crackLabel.show = isLeg;
+    if (armSet.crackLabel) armSet.crackLabel.show = !isLeg;
+    bones.forEach(b => { b.material = xray ? boneX : boneNormal; });
+    crackM.emissiveIntensity = (xray ? 1.6 : .7) + .4 * Math.sin(t * 4);
   };
-});
-
-/* Pilihan tulang paha/lengan membangun ulang sorotan pada anatomi manusia. */
-function setFisuraBone(type) {
-  fisuraBone = type;
-  $('#boneLegBtn').classList.toggle('sel', type === 'leg');
-  $('#boneArmBtn').classList.toggle('sel', type === 'arm');
-  $('#fisuraCap').textContent = type === 'leg'
-    ? 'Anatomi rangka manusia: tulang paha kiri dan kanan disorot. Normal, fisura (retak halus), dan fraktur (patah) dibandingkan dari kiri ke kanan.'
-    : 'Anatomi rangka manusia: tulang lengan atas kiri dan kanan disorot. Normal, fisura (retak halus), dan fraktur (patah) dibandingkan dari kiri ke kanan.';
-  /* Muat ulang halaman scene agar tulang yang tepat disorot. */
-  const old = document.querySelector('[data-scene="fisura"]');
-  if (old) {
-    const canvas = old.querySelector('canvas');
-    if (canvas) canvas.remove();
-    old.querySelectorAll('.lb,.hint,.loading').forEach(n => n.remove());
-  }
-  const scene = document.querySelector('[data-scene="fisura"]');
-  if (scene) scene.dataset.sceneReady = '0';
-  location.reload();
-}
-$('#boneLegBtn').addEventListener('click', () => setFisuraBone('leg'));
-$('#boneArmBtn').addEventListener('click', () => setFisuraBone('arm'));
-
-$('#crackBtn').addEventListener('click', e => {
-  xray = !xray;
-  e.currentTarget.classList.toggle('sel', xray);
-  e.currentTarget.textContent = xray ? 'Mode normal' : 'Mode rontgen';
 });
 
 /* ---------- Artritis (radang sendi lutut) ---------- */
@@ -1193,7 +1180,7 @@ const BUILD_artritis = async api => {
   const knees = [];
 
   function knee(x, sick) {
-    const k = new THREE.Group(); k.position.x = x; k.rotation.y = .35;
+    const k = new THREE.Group(); k.position.x = x; k.rotation.y = 1.1;
     const obj = new THREE.Group();
     const th = sick ? .009 : .035;
     obj.add(mesh(femG, boneM), mesh(geo(pat), boneM));
@@ -1253,9 +1240,9 @@ const BUILD_artritis = async api => {
     });
   };
 };
-viewer('artritis', { hw: 4.5, hh: 4.8, cy: -.1, auto: false }, BUILD_artritis);
+viewer('artritis', { hw: 3.8, hh: 5.2, cy: -.15, auto: false }, BUILD_artritis);
 /* Kartu osteoartritis: model lutut 3D mandiri yang juga bisa diputar. */
-viewer('oaCard', { hw: 3.4, hh: 4.5, cy: -.1, auto: false }, BUILD_artritis);
+viewer('oaCard', { hw: 3.4, hh: 4.8, cy: -.15, auto: false }, BUILD_artritis);
 
 /* ---------- Model sel otot (skematis, mikroskopis) ---------- */
 function focusMats(groups) {
