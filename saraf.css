@@ -402,3 +402,7 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
   #kelainan [data-scene="spine"] { height: 470px; }
   #kelainan [data-scene="artritis"] { height: 430px; }
 }
+#kelainan [data-scene="fisura"] { height: 560px; }
+@media (max-width: 700px) {
+  #kelainan [data-scene="fisura"] { height: 470px; }
+}
