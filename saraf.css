@@ -524,6 +524,11 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 #kelainan [data-scene="fisura"] .hint,
 #kelainan [data-scene="artritis"] .hint,
 #kelainan [data-scene="oaCard"] .hint { z-index:4; font-size:13px; padding:6px 10px; }
+/* Bersihkan area model: petunjuk dan label tidak boleh menimpa tubuh. */
+#kelainan [data-scene="artritis"] .hint,
+#kelainan [data-scene="oaCard"] .hint { display:none; }
+#kelainan [data-scene="artritis"] .lb,
+#kelainan [data-scene="oaCard"] .lb { display:none !important; }
 #kelainan [data-scene="fisura"] .lb,
 #kelainan [data-scene="artritis"] .lb,
 #kelainan [data-scene="oaCard"] .lb { z-index:3; font-size:12px; font-weight:700; }
