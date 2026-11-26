@@ -1440,12 +1440,20 @@ async function stillShot(build, opt0, pose, W = 660, H = 310) {
   }
 }
 
+/* Beranda: tubuh manusia utuh dengan rangka normal sebagai fokus. */
+const BUILD_normalHuman = async api => {
+  const h = await buildHuman(api, 'hero');
+  h.L.kulit.visible = false;
+  h.L.organ.visible = false;
+  h.L.saraf.visible = false;
+  h.L.kerangka.visible = true;
+};
+
 const STILL_JOBS = [
   { id: 'saraf',  build: BUILD_body,     opt: { hw: 3.4, hh: 8.4 }, pose: cropBody(.34, .66), set: () => { bodyFocus = 'otak'; } },
-  // Kartu gerak dan tulang memakai foto anatomi sumber eksternal di index.html.
-  // Jangan render ulang dari model 3D di sini agar src foto tidak tertimpa.
+  // Kartu Beranda sistem gerak memakai foto sumber; kartu kelainan memakai rangka manusia 3D normal.
   { id: 'refleks', build: BUILD_body,    opt: { hw: 3.4, hh: 8.4 }, pose: cropBody(.42, .08), set: () => { bodyFocus = 'tepi'; } },
-  { id: 'tulang', build: BUILD_spine,    opt: { hw: 6.8, hh: 3.3, cy: -.15 } },
+  { id: 'tulangBeranda', build: BUILD_normalHuman, opt: { hw: 3.4, hh: 8.4 } },
   { id: 'ra',     build: BUILD_ra,       opt: { hw: 3, hh: 2 } },
   { id: 'gout',   build: BUILD_gout,     opt: { hw: 3, hh: 2 } }
 ];
