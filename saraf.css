@@ -500,3 +500,13 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 .bone-care-grid .bone-care-item { overflow:hidden; }
 .bone-care-grid .bone-care-credit { display:block; line-height:1.5; margin-top:14px; }
 @media(max-width:600px){ .bone-care-grid .bone-care-3d, .bone-care-grid .bone-care-photo { height:180px !important; min-height:180px; } .bone-care-grid .bone-care-photo-pair .bone-care-photo { height:180px !important; } }
+
+
+/* Tata letak model anatomi manusia utuh pada menu Kelainan */
+#kelainan [data-scene="fisura"] { height:clamp(430px,58vw,620px); min-height:430px; max-height:620px; overflow:hidden; border-radius:16px; background:radial-gradient(ellipse at 50% 38%,#1a344c 0%,#102235 64%,#0c1926 100%); }
+#kelainan [data-scene="artritis"] { height:clamp(470px,58vw,620px); min-height:470px; overflow:hidden; border-radius:16px; background:radial-gradient(ellipse at 50% 38%,#1a344c 0%,#102235 64%,#0c1926 100%); }
+#kelainan [data-scene="oaCard"] { height:390px; min-height:360px; overflow:hidden; border-radius:14px; background:radial-gradient(ellipse at 50% 38%,#1a344c 0%,#102235 64%,#0c1926 100%); }
+#kelainan [data-scene="fisura"] .lb,#kelainan [data-scene="artritis"] .lb,#kelainan [data-scene="oaCard"] .lb { max-width:170px; padding:5px 9px; border-radius:7px; white-space:normal; text-align:center; line-height:1.25; font-size:clamp(11px,1.1vw,14px); }
+#kelainan [data-scene="fisura"] + .tabs { position:relative; z-index:2; justify-content:center; gap:.65rem; margin:1.1rem auto; }
+#kelainan [data-scene="fisura"] + .tabs button { min-height:50px; padding:.7rem 1.2rem; }
+@media(max-width:680px){#kelainan [data-scene="fisura"]{height:480px}#kelainan [data-scene="artritis"]{height:490px}#kelainan [data-scene="oaCard"]{height:330px}#kelainan [data-scene="fisura"] + .tabs{flex-wrap:wrap}}
