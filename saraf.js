@@ -545,7 +545,7 @@ function viewer(name, opt, build) {
     label(text, x, y, z = 0, parent, large = false) {
       const d = document.createElement('div');
       d.className = large ? 'lb lb-large' : 'lb'; d.textContent = text;
-      if (large) { d.style.fontSize = 'clamp(16px, 1.55vw, 22px)'; d.style.fontWeight = '850'; d.style.padding = '9px 13px'; d.style.lineHeight = '1.3'; d.style.maxWidth = '230px'; d.style.whiteSpace = 'normal'; d.style.textAlign = 'center'; } el.appendChild(d);
+      if (large) { d.style.fontSize = 'clamp(13px, 1.05vw, 16px)'; d.style.fontWeight = '750'; d.style.padding = '5px 8px'; d.style.lineHeight = '1.3'; d.style.maxWidth = '175px'; d.style.whiteSpace = 'normal'; d.style.textAlign = 'center'; } el.appendChild(d);
       const l = { d, v: new THREE.Vector3(x, y, z), parent, show: true };
       api.labels.push(l);
       return l;
