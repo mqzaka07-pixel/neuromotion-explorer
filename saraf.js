@@ -545,7 +545,7 @@ function viewer(name, opt, build) {
     label(text, x, y, z = 0, parent, large = false) {
       const d = document.createElement('div');
       d.className = large ? 'lb lb-large' : 'lb'; d.textContent = text;
-      if (large) { d.style.fontSize = 'clamp(13px, 1.2vw, 18px)'; d.style.fontWeight = '800'; d.style.padding = '7px 10px'; d.style.lineHeight = '1.25'; d.style.maxWidth = '190px'; d.style.whiteSpace = 'normal'; d.style.textAlign = 'center'; } el.appendChild(d);
+      if (large) { d.style.fontSize = 'clamp(16px, 1.55vw, 22px)'; d.style.fontWeight = '850'; d.style.padding = '9px 13px'; d.style.lineHeight = '1.3'; d.style.maxWidth = '230px'; d.style.whiteSpace = 'normal'; d.style.textAlign = 'center'; } el.appendChild(d);
       const l = { d, v: new THREE.Vector3(x, y, z), parent, show: true };
       api.labels.push(l);
       return l;
@@ -1159,7 +1159,7 @@ const BUILD_jointComparison = async (api, condition = 'arthritis') => {
   if (!patellae.length) throw new Error('Tempurung lutut tidak ditemukan');
 
   const boneMat = mat('#e8ddc7', { roughness: .68 });
-  const skinMat = glass('#dcae91', .13);
+  const skinMat = glass('#dcae91', .19);
   const normalJoint = mat('#55c7d7', { roughness: .35, emissive: new THREE.Color('#176b80'), emissiveIntensity: .12 });
   const inflamedMat = mat('#df554f', { roughness: .4, emissive: new THREE.Color('#8f211d'), emissiveIntensity: .24 });
   const synoviumMat = mat('#f08a7b', { transparent: true, opacity: .68, depthWrite: false, roughness: .4 });
@@ -1174,7 +1174,7 @@ const BUILD_jointComparison = async (api, condition = 'arthritis') => {
     const anatomy = new THREE.Group();
     anatomy.add(group([skin], skinMat));
     anatomy.add(group(sk, boneMat));
-    const placed = place(holder, anatomy, bodyBox, 2.05, 6.35, false);
+    const placed = place(holder, anatomy, bodyBox, 2.2, 6.6, false);
 
     const kneeCenters = patellae.map(p => placed.at(boxC(partBox([p]))));
     kneeCenters.forEach((kp, index) => {
