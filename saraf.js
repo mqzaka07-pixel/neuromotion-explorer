@@ -1078,90 +1078,71 @@ const BUILD_spine = async api => {
 };
 viewer('spine', { hw: 7.7, hh: 3.4, cy: -.15 }, BUILD_spine);
 
-/* ---------- Fisura: tiga model anatomi manusia utuh dengan cedera pada tulang sasaran ---------- */
-viewer('fisura', { hw: 4.45, hh: 3.25, cy: 0, auto: false, interactive: true }, async api => {
-  const sk = await pack('skeleton');
-  const states = ['normal', 'fisura', 'fraktur'];
-  const names = ['NORMAL', 'FISURA / RETAK', 'FRAKTUR / PATAH'];
-  const xPositions = [-2.8, 0, 2.8];
+/* ---------- Fisura: satu anatomi manusia utuh, cedera tulang ditandai jelas ---------- */
+viewer('fisura', { hw: 2.8, hh: 4.65, cy: 0, auto: false, interactive: true }, async api => {
+  const human = await buildHuman(api, 'hero');
+  human.L.organ.visible = false;
+  human.L.saraf.visible = false;
+  human.L.kulit.visible = true;
+  human.L.kulit.traverse(mesh => {
+    if (!mesh.isMesh) return;
+    mesh.material.transparent = true;
+    mesh.material.opacity = .12;
+    mesh.material.depthWrite = false;
+  });
+
   const target = {
     leg: /^(left|right) femur$/i,
     arm: /^(left|right) humerus$/i
   };
-  const fissureMat = mat('#f0a04b', { roughness: .5, emissive: new THREE.Color('#b85b20'), emissiveIntensity: .22 });
-  const fractureMat = mat('#ed685c', { roughness: .48, emissive: new THREE.Color('#a82e29'), emissiveIntensity: .25 });
-  const xrayMat = glass('#82dfff', .58);
-  const crackMat = mat('#ff624e', { emissive: new THREE.Color('#ff382b'), emissiveIntensity: .9 });
-  const models = [];
+  const normalMat = mat('#d8e8ee', { roughness: .58 });
+  const fissureMat = mat('#efa45b', { roughness: .48, emissive: new THREE.Color('#9c4b1e'), emissiveIntensity: .18 });
+  const fractureMat = mat('#df695e', { roughness: .48, emissive: new THREE.Color('#8f2828'), emissiveIntensity: .22 });
+  const xrayMat = glass('#a6dff2', .64);
+  const crackMat = mat('#ffb15a', { emissive: new THREE.Color('#ff7b32'), emissiveIntensity: .8 });
+  const damage = new THREE.Group();
+  api.g.add(damage);
+  const boneObjects = [];
 
-  for (let i = 0; i < states.length; i++) {
-    const localApi = { g: new THREE.Group(), frame: () => {} };
-    const human = await buildHuman(localApi, 'hero');
-    human.L.organ.visible = false;
-    human.L.saraf.visible = false;
-    human.L.kulit.visible = true;
+  human.L.kerangka.traverse(o => {
+    if (!o.isMesh || !o.userData.part) return;
+    const name = o.userData.part.n || '';
+    o.userData.baseBoneMaterial = o.material;
+    o.userData.partName = name;
+    if (/^(left|right) (femur|humerus)$/i.test(name)) boneObjects.push(o);
+  });
+
+  const addCrack = part => {
+    const b = partBox([part]), c = boxC(b), size = boxS(b);
+    const z = b.max.z + .012;
+    const y = c.y;
+    const pts = [
+      new THREE.Vector3(c.x - size.x * .38, y + size.y * .035, z),
+      new THREE.Vector3(c.x - size.x * .08, y - size.y * .018, z + .008),
+      new THREE.Vector3(c.x + size.x * .08, y + size.y * .02, z + .01),
+      new THREE.Vector3(c.x + size.x * .36, y - size.y * .025, z)
+    ].map(v => new THREE.Vector3(...human.at(v)));
+    damage.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), crackMat));
+  };
+
+  const selectedParts = kind => human.sk.filter(p => target[kind].test(p.n));
+  selectedParts('leg').filter(p => /^right/i.test(p.n)).forEach(addCrack);
+  selectedParts('arm').filter(p => /^right/i.test(p.n)).forEach(addCrack);
+
+  api.label('KIRI: TULANG NORMAL', -.9, -.15, .28);
+  api.label('KANAN: GARIS RETAK', .9, -.15, .28);
+  api.tick = () => {
+    const matcher = target[fisuraBone];
+    boneObjects.forEach(o => {
+      const isTarget = matcher.test(o.userData.partName || '');
+      const isRight = /^right/i.test(o.userData.partName || '');
+      o.material = xray ? xrayMat : !isTarget ? o.userData.baseBoneMaterial
+        : isRight ? fissureMat : normalMat;
+    });
+    damage.visible = true;
     human.L.kulit.traverse(mesh => {
-      if (!mesh.isMesh) return;
-      mesh.material.transparent = true;
-      mesh.material.opacity = .32;
-      mesh.material.depthWrite = false;
+      if (mesh.isMesh) mesh.material.opacity = xray ? .035 : .12;
     });
-
-    const targetMeshes = [];
-    human.L.kerangka.traverse(o => {
-      if (!o.isMesh || !o.userData.part) return;
-      const partName = o.userData.part.n || '';
-      o.userData.baseBoneMaterial = o.material;
-      o.userData.partName = partName;
-      if (target.leg.test(partName) || target.arm.test(partName)) targetMeshes.push(o);
-    });
-
-    const marks = new THREE.Group();
-    localApi.g.add(marks);
-    if (states[i] !== 'normal') {
-      for (const kind of ['leg', 'arm']) {
-        human.sk.filter(p => target[kind].test(p.n)).forEach(p => {
-          const bounds = partBox([p]), center = boxC(bounds), size = boxS(bounds);
-          const radius = Math.max(.07, Math.min(size.x, size.z) * .55);
-          const points = [
-            new THREE.Vector3(center.x - radius, center.y - size.y * .025, center.z + size.z * .58),
-            new THREE.Vector3(center.x - radius * .28, center.y + size.y * .018, center.z + size.z * .61),
-            new THREE.Vector3(center.x + radius * .12, center.y - size.y * .012, center.z + size.z * .61),
-            new THREE.Vector3(center.x + radius, center.y + size.y * .025, center.z + size.z * .58)
-          ].map(v => new THREE.Vector3(...human.at(v)));
-          const geometry = new THREE.BufferGeometry().setFromPoints(points);
-          const line = new THREE.Line(geometry, crackMat);
-          line.material.linewidth = 4;
-          marks.add(line);
-        });
-      }
-    }
-
-    const box = new THREE.Box3().setFromObject(localApi.g);
-    const holder = new THREE.Group();
-    place(holder, localApi.g, box, 1.35, 4.55, false);
-    holder.position.x = xPositions[i];
-    api.g.add(holder);
-    models.push({ human, marks, targetMeshes, state: states[i] });
-  }
-
-  xPositions.forEach((x, i) => api.label(names[i], x, -2.55));
-  api.tick = t => {
-    models.forEach(model => {
-      model.marks.visible = model.state !== 'normal' && (fisuraBone === 'leg' || fisuraBone === 'arm');
-      model.human.L.kulit.traverse(mesh => { if (mesh.isMesh) mesh.material.opacity = xray ? .035 : .16; });
-      model.human.L.kerangka.traverse(o => {
-        if (!o.isMesh || !o.userData.part) return;
-        if (xray) o.material = xrayMat;
-        else {
-          const selected = target[fisuraBone].test(o.userData.partName || '');
-          o.material = selected && model.state === 'fisura' ? fissureMat
-            : selected && model.state === 'fraktur' ? fractureMat
-            : o.userData.baseBoneMaterial;
-        }
-      });
-    });
-    crackMat.emissiveIntensity = .75 + .2 * Math.sin(t * 3.4);
   };
 });
 
