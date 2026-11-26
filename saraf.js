@@ -1100,9 +1100,12 @@ viewer('fisura', { hw: 4.45, hh: 3.25, cy: 0, auto: false, interactive: false },
     human.L.organ.visible = false;
     human.L.saraf.visible = false;
     human.L.kulit.visible = true;
-    human.L.kulit.material.transparent = true;
-    human.L.kulit.material.opacity = .32;
-    human.L.kulit.material.depthWrite = false;
+    human.L.kulit.traverse(mesh => {
+      if (!mesh.isMesh) return;
+      mesh.material.transparent = true;
+      mesh.material.opacity = .32;
+      mesh.material.depthWrite = false;
+    });
 
     const targetMeshes = [];
     human.L.kerangka.traverse(o => {
@@ -1169,9 +1172,12 @@ const BUILD_artritis = async api => {
   human.L.organ.visible = false;
   human.L.saraf.visible = false;
   human.L.kulit.visible = true;
-  human.L.kulit.material.transparent = true;
-  human.L.kulit.material.opacity = .3;
-  human.L.kulit.material.depthWrite = false;
+  human.L.kulit.traverse(mesh => {
+    if (!mesh.isMesh) return;
+    mesh.material.transparent = true;
+    mesh.material.opacity = .3;
+    mesh.material.depthWrite = false;
+  });
 
   const normalJoint = mat('#62c8ef', { transparent: true, opacity: .72, emissive: new THREE.Color('#35b6e8'), emissiveIntensity: .5, depthWrite: false });
   const arthritisJoint = mat('#ef7667', { transparent: true, opacity: .78, emissive: new THREE.Color('#e74e3c'), emissiveIntensity: .65, depthWrite: false });
