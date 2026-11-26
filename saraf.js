@@ -106,10 +106,11 @@ function setArm(bend) {
 $('#bend').addEventListener('click', () => setArm(true));
 $('#straight').addEventListener('click', () => setArm(false));
 
-let fisuraBone = 'leg';
+let fisuraBone = localStorage.getItem('neuromotion-fisura-bone') === 'arm' ? 'arm' : 'leg';
 let xray = false;
 function setFisuraBone(type) {
   fisuraBone = type;
+  localStorage.setItem('neuromotion-fisura-bone', type);
   $('#boneLegBtn').classList.toggle('sel', type === 'leg');
   $('#boneArmBtn').classList.toggle('sel', type === 'arm');
   $('#fisuraCap').textContent = type === 'leg'
@@ -118,6 +119,11 @@ function setFisuraBone(type) {
 }
 $('#boneLegBtn').addEventListener('click', () => setFisuraBone('leg'));
 $('#boneArmBtn').addEventListener('click', () => setFisuraBone('arm'));
+$('#boneLegBtn').classList.toggle('sel', fisuraBone === 'leg');
+$('#boneArmBtn').classList.toggle('sel', fisuraBone === 'arm');
+$('#fisuraCap').textContent = fisuraBone === 'leg'
+  ? 'Anatomi rangka manusia: tulang paha kiri dan kanan disorot. Normal, fisura (retak halus), dan fraktur (patah) dibandingkan dari kiri ke kanan.'
+  : 'Anatomi rangka manusia: tulang lengan atas kiri dan kanan disorot. Normal, fisura (retak halus), dan fraktur (patah) dibandingkan dari kiri ke kanan.';
 
 $('#crackBtn').addEventListener('click', e => {
   xray = !xray;
