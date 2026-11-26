@@ -1155,8 +1155,12 @@ const BUILD_jointComparison = async (api, condition = 'arthritis') => {
   human.L.kerangka.visible = false;
 
   const skeleton = human.L.kerangka.clone(true);
+  skeleton.visible = true;
+  skeleton.traverse(node => { if (node.isMesh) node.visible = true; });
   const normalBody = skeleton.clone(true);
   const affectedBody = skeleton.clone(true);
+  normalBody.visible = true;
+  affectedBody.visible = true;
   const bodyScale = .64;
   normalBody.scale.setScalar(bodyScale);
   affectedBody.scale.setScalar(bodyScale);
