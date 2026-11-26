@@ -371,13 +371,3 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 .home-skeleton-view canvas { width: 100%; height: 100%; display: block; }
 .home-skeleton-view .hint { position: absolute; right: 8px; bottom: 6px; font-size: 10px; opacity: .8; pointer-events: none; }
 
-/* Beranda: beri ruang lebih besar untuk rangka manusia utuh. */
-.card-thumb:has(.home-skeleton-view) { height: 390px; padding: 0; background: radial-gradient(ellipse at center, #28465b 0%, #10283c 72%); }
-.card-thumb .home-skeleton-view { min-height: 390px; height: 390px; }
-.card-thumb .home-skeleton-view canvas { width: 100% !important; height: 100% !important; }
-@media (max-width: 600px) { .card-thumb:has(.home-skeleton-view), .card-thumb .home-skeleton-view { height: 330px; min-height: 330px; } }
-
-/* Beranda: model rangka diperbesar lagi, bukan hanya kotak kartunya. */
-.card-thumb:has(.home-skeleton-view) { height: 520px; min-height: 520px; }
-.card-thumb .home-skeleton-view { height: 520px; min-height: 520px; }
-@media (max-width: 600px) { .card-thumb:has(.home-skeleton-view), .card-thumb .home-skeleton-view { height: 440px; min-height: 440px; } }
