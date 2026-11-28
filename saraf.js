@@ -1052,36 +1052,42 @@ async function addHumanAnatomy(api, x, maxW, maxH, opts = {}) {
 /* ---------- Model anatomi manusia utuh: satu model per kartu ---------- */
 async function buildSpineVariant(api, cfg) {
   api.rot = [];
-  const human = await addHumanAnatomy(api, 0, 1.85, 2.85, { skinOpacity: .34 });
-  if (cfg.side) human.holder.rotation.y = Math.PI / 2;
-  api.rot.push(human.holder);
-
-  const vertebrae = human.sk.filter(p => RE.spineBone.test(p.n));
+  const [skeleton] = await Promise.all([pack('skeleton')]);
+  const vertebrae = skeleton.filter(p => RE.spineBone.test(p.n));
+  const discs = skeleton.filter(p => RE.disc.test(p.n));
+  const spineParts = [...vertebrae, ...discs];
   if (!vertebrae.length) throw new Error('Model ruas tulang belakang tidak ditemukan');
+
+  // Tampilkan kolom tulang belakang saja. Jangan menyalin tubuh normal ke setiap kartu.
+  const holder = new THREE.Group();
+  api.g.add(holder);
+  const bones = group(spineParts, mat(COL.bone, { roughness: .62 }));
+  const bounds = partBox(spineParts);
+  const placed = place(holder, bones, bounds, 1.05, 2.65, false);
+  if (cfg.side) holder.rotation.y = Math.PI / 2;
+  api.rot.push(holder);
+
   const ys = vertebrae.map(p => boxC(partBox([p])).y);
   const top = Math.max(...ys), bottom = Math.min(...ys);
   const span = Math.max(.001, top - bottom);
 
   const bendAt = t => {
-    if (cfg.type === 'scoliosis') return { x: .28 * Math.sin(t * Math.PI * 2), z: 0 };
-    if (cfg.type === 'kyphosis') return { x: 0, z: .34 * Math.exp(-Math.pow((t - .38) / .19, 2)) };
-    if (cfg.type === 'lordosis') return { x: 0, z: -.31 * Math.exp(-Math.pow((t - .76) / .14, 2)) };
-    return { x: 0, z: .025 * Math.sin(t * Math.PI * 2) };
+    if (cfg.type === 'scoliosis') return { x: .42 * Math.sin(t * Math.PI * 2), z: 0 };
+    if (cfg.type === 'kyphosis') return { x: 0, z: .52 * Math.exp(-Math.pow((t - .38) / .19, 2)) };
+    if (cfg.type === 'lordosis') return { x: 0, z: -.48 * Math.exp(-Math.pow((t - .76) / .14, 2)) };
+    return { x: 0, z: .055 * Math.sin(t * Math.PI * 2) };
   };
 
-  const shiftParts = parts => parts.forEach(part => {
+  spineParts.forEach(part => {
     const center = boxC(partBox([part]));
     const t = (top - center.y) / span;
     const d = bendAt(t);
-    const mesh = human.bones.children.find(o => o.userData.part === part);
-    if (mesh) mesh.position.add(new THREE.Vector3(d.x / human.placed.k, 0, d.z / human.placed.k));
+    const mesh = bones.children.find(o => o.userData.part === part);
+    if (mesh) mesh.position.add(new THREE.Vector3(d.x / placed.k, 0, d.z / placed.k));
   });
-
-  shiftParts(vertebrae);
-  shiftParts(human.sk.filter(p => RE.disc.test(p.n)));
 }
 
-viewer('spineNormal', { hw: 1.2, hh: 1.8, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'normal', side: false }));
+viewer('spineNormal', { hw: 1.2, hh: 1.8, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'normal', side: true }));
 viewer('spineScoliosis', { hw: 1.2, hh: 1.8, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'scoliosis', side: false }));
 viewer('spineKyphosis', { hw: 1.2, hh: 1.8, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'kyphosis', side: true }));
 viewer('spineLordosis', { hw: 1.2, hh: 1.8, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'lordosis', side: true }));
