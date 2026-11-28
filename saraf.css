@@ -376,3 +376,18 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 .card-thumb .home-skeleton-view { min-height: 390px; height: 390px; }
 .card-thumb .home-skeleton-view canvas { width: 100% !important; height: 100% !important; }
 @media (max-width: 600px) { .card-thumb:has(.home-skeleton-view), .card-thumb .home-skeleton-view { height: 330px; min-height: 330px; } }
+
+/* Perbandingan anatomi utuh pada modul kelainan dan ilustrasi statis perawatan. */
+#kelainan [data-scene="spine"],
+#kelainan [data-scene="fisura"],
+#kelainan [data-scene="artritis"] { height: 440px; }
+#kelainan [data-scene="oaCard"] { height: 250px; }
+.care-figure .care-static { height: 430px; cursor: default; touch-action: auto; }
+.care-figure .care-static canvas { pointer-events: none; }
+.care-figure .care-static .hint { display: none !important; }
+@media (max-width: 600px) {
+  #kelainan [data-scene="spine"],
+  #kelainan [data-scene="fisura"],
+  #kelainan [data-scene="artritis"] { height: 390px; }
+  .care-figure .care-static { height: 360px; }
+}
