@@ -421,3 +421,12 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
   #kelainan [data-scene="oaCard"],
   #kelainan [data-scene="jointOverview"] { height: 430px; }
 }
+
+/* Perbandingan kelainan tulang belakang: kartu model 3D individual */
+.spine-compare { align-items: stretch; gap: 1rem; }
+.spine-card { min-width: 0; padding: .65rem; overflow: hidden; }
+.spine-model { height: 275px; border-radius: 10px; }
+.spine-card h3 { margin: .85rem .35rem .25rem; text-align: center; }
+.spine-card p { margin: 0 .35rem .35rem; text-align: center; font-size: .9rem; min-height: 2.8em; }
+@media (max-width: 960px) { .spine-model { height: 260px; } }
+@media (max-width: 560px) { .spine-model { height: 300px; } }
