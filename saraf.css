@@ -392,3 +392,32 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
   #kelainan [data-scene="oaCard"] { height: 390px; }
   .care-figure .care-static { height: 360px; }
 }
+
+
+/* Penyelarasan kartu Beranda: semua gambar memiliki tinggi yang sama. */
+#beranda .cards { align-items: stretch; }
+#beranda .cards > .card { min-width: 0; }
+#beranda .cards .card-thumb { height: 245px; flex: 0 0 245px; }
+#beranda .cards .card-thumb .home-skeleton-view,
+#beranda .cards .card-thumb .home-skeleton-view canvas { height: 245px !important; min-height: 245px; }
+#beranda .cards .card-thumb:has(.home-skeleton-view) { height: 245px; }
+
+/* Model kelainan diperbesar agar anatomi lebih mudah dibaca. */
+#kelainan [data-scene="spine"],
+#kelainan [data-scene="fisura"] { height: 560px; }
+#kelainan [data-scene="artritis"],
+#kelainan [data-scene="oaCard"],
+#kelainan [data-scene="jointOverview"] { height: 520px; }
+.joint-overview-figure { margin-top: 1.5rem; }
+.joint-overview-figure h3 { margin: .25rem .4rem .7rem; text-align: center; }
+@media (max-width: 600px) {
+  #beranda .cards .card-thumb,
+  #beranda .cards .card-thumb:has(.home-skeleton-view) { height: 230px; flex-basis: 230px; }
+  #beranda .cards .card-thumb .home-skeleton-view,
+  #beranda .cards .card-thumb .home-skeleton-view canvas { height: 230px !important; min-height: 230px; }
+  #kelainan [data-scene="spine"],
+  #kelainan [data-scene="fisura"] { height: 480px; }
+  #kelainan [data-scene="artritis"],
+  #kelainan [data-scene="oaCard"],
+  #kelainan [data-scene="jointOverview"] { height: 430px; }
+}
