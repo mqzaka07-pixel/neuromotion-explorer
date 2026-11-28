@@ -209,7 +209,7 @@ button.sel { background: var(--ink); color: var(--bg); border-color: var(--ink);
   position: absolute; transform: translate(-50%, -50%); pointer-events: none;
   font-size: 12.5px; font-weight: 700; line-height: 1.2; white-space: nowrap;
   color: var(--ink); background: rgba(11, 22, 34, .85); border: 1px solid var(--line);
-  border-radius: 6px; padding: 3px 7px;
+  border-radius: 6px; padding: 2px 7px;
 }
 .hint {
   position: absolute; right: 10px; bottom: 10px; font-size: 12px; color: var(--mute);
@@ -353,190 +353,26 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 
 /* Foto anatomi bersumber dari Wikimedia Commons (bukan gambar AI). */
 .card-thumb { background: #10283c; }
-.card-thumb img[data-card-image="gerak"] {
+.card-thumb img[data-card-image="gerak"],
+.card-thumb img[data-card-image="tulang"] {
   object-fit: contain;
   object-position: center;
   padding: 5px;
-}
-.card-thumb img[data-card-image="tulang"] {
-  width: auto;
-  max-width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
-  padding: 10px 0;
 }
 
 .card-source { display:block; margin: .45rem 0 .2rem; color: var(--mute); font-size: .72rem; line-height: 1.35; }
 
 /* Kartu osteoartritis memakai viewer anatomi 3D interaktif. */
-.card-thumb-3d { height: 280px; padding: 0; overflow: hidden; background: #10283c; }
-.card-thumb-3d .v3d { width: 100%; height: 100%; min-height: 250px; border-radius: 10px; }
+.card-thumb-3d { height: 260px; padding: 0; overflow: hidden; background: #10283c; }
+.card-thumb-3d .v3d { width: 100%; height: 100%; min-height: 220px; border-radius: 10px; }
 
 /* Viewer rangka manusia pada kartu Beranda. */
 .home-skeleton-view { width: 100%; height: 100%; min-height: 220px; position: relative; overflow: hidden; }
 .home-skeleton-view canvas { width: 100%; height: 100%; display: block; }
 .home-skeleton-view .hint { position: absolute; right: 8px; bottom: 6px; font-size: 10px; opacity: .8; pointer-events: none; }
 
-/* Beranda: samakan tinggi viewer rangka dengan thumbnail kartu lain. */
-.card-thumb:has(.home-skeleton-view) {
-  height: clamp(190px, 22vw, 260px);
-  padding: 0;
-  background: radial-gradient(ellipse at center, #28465b 0%, #10283c 72%);
-}
-.card-thumb .home-skeleton-view {
-  min-height: 0;
-  height: 100%;
-}
-.card-thumb .home-skeleton-view canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-
-/* Model anatomi utuh untuk perbandingan kelainan tulang belakang dan lutut. */
-#kelainan [data-scene="spine"] { height: 560px; }
-#kelainan [data-scene="artritis"] { height: 500px; }
-.card-thumb-3d .v3d { min-height: 250px; }
-@media (max-width: 700px) {
-  #kelainan [data-scene="spine"] { height: 470px; }
-  #kelainan [data-scene="artritis"] { height: 430px; }
-}
-#kelainan [data-scene="fisura"] { height: 560px; }
-@media (max-width: 700px) {
-  #kelainan [data-scene="fisura"] { height: 470px; }
-}
-
-/* Panel edukasi: ilustrasi anatomi asli dari Wikimedia Commons, bukan gambar AI. */
-.bone-care {
-  display: block;
-  overflow: hidden;
-}
-.bone-care-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-bottom: 18px;
-}
-.bone-care-heading b { font-size: 1.08rem; }
-.bone-care-heading span { color: var(--muted, #9fc3df); font-size: .92rem; }
-.bone-care-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-.bone-care-item {
-  min-width: 0;
-  padding: 12px 10px;
-  border: 1px solid rgba(139,183,216,.2);
-  border-radius: 13px;
-  background: rgba(7,20,32,.28);
-  text-align: center;
-}
-.bone-care-item svg {
-  display: block;
-  width: 100%;
-  height: 112px;
-  margin: 0 auto 8px;
-}
-.bone-care-item b { display: block; font-size: .88rem; line-height: 1.35; }
-.bone-care-item p { margin: 6px 0 0; color: var(--muted, #9fc3df); font-size: .78rem; line-height: 1.45; }
-.bone-care-credit {
-  display: block;
-  margin-top: 13px;
-  font-size: .7rem;
-  line-height: 1.4;
-  opacity: .72;
-}
-@media (max-width: 900px) {
-  .bone-care-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 480px) {
-  .bone-care-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .bone-care-item { padding: 9px 7px; }
-  .bone-care-item svg { height: 92px; }
-  .bone-care-item b { font-size: .8rem; }
-  .bone-care-item p { font-size: .72rem; }
-}
-
-
-/* Force visible layout for the bone-care illustrations on the deployed page. */
-#kelainan .bone-care { display: block !important; }
-#kelainan .bone-care-heading { display: flex !important; }
-#kelainan .bone-care-grid { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 12px !important; margin-top: 16px !important; }
-#kelainan .bone-care-item { display: block !important; min-width: 0; }
-#kelainan .bone-care-item svg { display: block !important; width: 100% !important; height: 112px !important; visibility: visible !important; opacity: 1 !important; }
-#kelainan .bone-care-item b, #kelainan .bone-care-item p { display: block !important; visibility: visible !important; }
-@media (max-width: 900px) { #kelainan .bone-care-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
-@media (max-width: 480px) { #kelainan .bone-care-item svg { height: 92px !important; } }
-
-
-/* Human 3D model previews for bone-care advice cards */
-.bone-care-item .bone-care-3d { display:block; width:100%; height:190px; border:0; border-radius:10px; background:radial-gradient(ellipse at center,#233e53,#102638); pointer-events:none; }
-.bone-care-item { overflow:hidden; }
-.bone-care-credit { display:block; margin-top:14px; line-height:1.6; }
-.bone-care-credit a { color:var(--accent,#63d7cc); text-decoration:underline; }
-@media(max-width:600px){ .bone-care-item .bone-care-3d { height:160px; } }
-
-
-/* Realistic human 3D model frames: ensure iframe is visible and not stick-figure SVG fallback */
-.bone-care-grid .bone-care-item { display:flex; flex-direction:column; align-items:stretch; }
-.bone-care-grid .bone-care-3d { display:block !important; width:100% !important; height:210px !important; min-height:210px; border:0; border-radius:10px; background:#0d1d2a; pointer-events:none; }
-.bone-care-grid .bone-care-item b { margin-top:10px; }
-.bone-care-credit { display:block; margin-top:14px; }
-@media(max-width:600px){ .bone-care-grid .bone-care-3d { height:180px !important; min-height:180px; } }
-
-
-/* Static 3D renders: no embedded viewer, drag, rotate or loading overlay */
-.bone-care-grid .bone-care-3d { display:block !important; width:100% !important; height:210px !important; min-height:210px; object-fit:contain; object-position:center; border:0; border-radius:10px; background:#0d1d2a; pointer-events:none; }
-.bone-care-grid .bone-care-item { overflow:hidden; }
-@media(max-width:600px){ .bone-care-grid .bone-care-3d { height:180px !important; min-height:180px; } }
-
-
-/* Bone care cards: relevant non-AI photos and simple posture illustration */
-.bone-care-grid .bone-care-3d, .bone-care-grid .bone-care-photo { display:block !important; width:100% !important; height:210px !important; min-height:210px; object-fit:cover; object-position:center; border:0; border-radius:10px; background:#0d1d2a; pointer-events:none; }
-.bone-care-grid .bone-care-photo-pair { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-.bone-care-grid .bone-care-photo-pair .bone-care-photo { height:210px !important; object-fit:cover; }
-.bone-care-grid .bone-care-item { overflow:hidden; }
-.bone-care-grid .bone-care-credit { display:block; line-height:1.5; margin-top:14px; }
-@media(max-width:600px){ .bone-care-grid .bone-care-3d, .bone-care-grid .bone-care-photo { height:180px !important; min-height:180px; } .bone-care-grid .bone-care-photo-pair .bone-care-photo { height:180px !important; } }
-
-
-/* Tata letak model anatomi manusia utuh pada menu Kelainan */
-#kelainan [data-scene="fisura"] { height:clamp(430px,58vw,620px); min-height:430px; max-height:620px; overflow:hidden; border-radius:16px; background:radial-gradient(ellipse at 50% 38%,#1a344c 0%,#102235 64%,#0c1926 100%); }
-#kelainan [data-scene="artritis"] { height:clamp(470px,58vw,620px); min-height:470px; overflow:hidden; border-radius:16px; background:radial-gradient(ellipse at 50% 38%,#1a344c 0%,#102235 64%,#0c1926 100%); }
-#kelainan [data-scene="oaCard"] { height:390px; min-height:360px; overflow:hidden; border-radius:14px; background:radial-gradient(ellipse at 50% 38%,#1a344c 0%,#102235 64%,#0c1926 100%); }
-#kelainan [data-scene="fisura"] .lb,#kelainan [data-scene="artritis"] .lb,#kelainan [data-scene="oaCard"] .lb { max-width:170px; padding:5px 9px; border-radius:7px; white-space:normal; text-align:center; line-height:1.25; font-size:clamp(11px,1.1vw,14px); }
-#kelainan [data-scene="fisura"] + .tabs { position:relative; z-index:2; justify-content:center; gap:.65rem; margin:1.1rem auto; }
-#kelainan [data-scene="fisura"] + .tabs button { min-height:50px; padding:.7rem 1.2rem; }
-@media(max-width:680px){#kelainan [data-scene="fisura"]{height:480px}#kelainan [data-scene="artritis"]{height:490px}#kelainan [data-scene="oaCard"]{height:330px}#kelainan [data-scene="fisura"] + .tabs{flex-wrap:wrap}}
-
-/* Kontrol sentuh dan petunjuk visual untuk model anatomi kelainan */
-#kelainan [data-scene="fisura"],
-#kelainan [data-scene="artritis"],
-#kelainan [data-scene="oaCard"] { cursor:grab; touch-action:none; }
-#kelainan [data-scene="fisura"]:active,
-#kelainan [data-scene="artritis"]:active,
-#kelainan [data-scene="oaCard"]:active { cursor:grabbing; }
-#kelainan [data-scene="fisura"] canvas,
-#kelainan [data-scene="artritis"] canvas,
-#kelainan [data-scene="oaCard"] canvas { pointer-events:auto; touch-action:none; }
-#kelainan [data-scene="fisura"] .hint,
-#kelainan [data-scene="artritis"] .hint,
-#kelainan [data-scene="oaCard"] .hint { z-index:4; font-size:13px; padding:6px 10px; }
-/* Bersihkan area model: petunjuk dan label tidak boleh menimpa tubuh. */
-#kelainan [data-scene="artritis"] .hint,
-#kelainan [data-scene="oaCard"] .hint { display:none; }
-#kelainan [data-scene="artritis"] .lb,
-#kelainan [data-scene="oaCard"] .lb { display:none !important; }
-#kelainan [data-scene="fisura"] .lb,
-#kelainan [data-scene="artritis"] .lb,
-#kelainan [data-scene="oaCard"] .lb { z-index:3; font-size:12px; font-weight:700; }
-
-/* Fallback gambar jika server sumber eksternal tidak dapat dijangkau. */
-.card-thumb img.asset-fallback,
-.bone-care-photo.asset-fallback {
-  object-fit: contain !important;
-  padding: 12px;
-  background: #10283c;
-}
+/* Beranda: ukuran kotak sesuai versi sebelumnya. */
+.card-thumb:has(.home-skeleton-view) { height: 390px; padding: 0; background: radial-gradient(ellipse at center, #28465b 0%, #10283c 72%); }
+.card-thumb .home-skeleton-view { min-height: 390px; height: 390px; }
+.card-thumb .home-skeleton-view canvas { width: 100% !important; height: 100% !important; }
+@media (max-width: 600px) { .card-thumb:has(.home-skeleton-view), .card-thumb .home-skeleton-view { height: 330px; min-height: 330px; } }
