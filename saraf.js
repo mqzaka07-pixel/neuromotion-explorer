@@ -1052,7 +1052,7 @@ async function addHumanAnatomy(api, x, maxW, maxH, opts = {}) {
 /* ---------- Model anatomi manusia utuh: satu model per kartu ---------- */
 async function buildSpineVariant(api, cfg) {
   api.rot = [];
-  const human = await addHumanAnatomy(api, 0, 1.85, 2.85, { skinOpacity: .16 });
+  const human = await addHumanAnatomy(api, 0, 1.85, 2.85, { skinOpacity: .34 });
   if (cfg.side) human.holder.rotation.y = Math.PI / 2;
   api.rot.push(human.holder);
 
