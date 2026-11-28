@@ -1028,118 +1028,103 @@ viewer('muscleOrgans', { hw: 7.2, hh: 2.25, cy: -.2 }, async api => {
 });
 
 /* ---------- Kelainan tulang belakang ---------- */
+/* ---------- Anatomi tubuh utuh untuk perbandingan kelainan ---------- */
+async function addHumanAnatomy(api, x, maxW, maxH, opts = {}) {
+  const [sk, organs] = await Promise.all([pack('skeleton'), pack('organs')]);
+  const skin = one(organs, 'skin');
+  if (!skin || !sk.length) throw new Error('Aset anatomi manusia tidak lengkap');
+  const holder = new THREE.Group();
+  holder.position.x = x;
+  const anatomy = new THREE.Group();
+  const skinMat = glass(COL.skin, opts.skinOpacity ?? .28);
+  anatomy.add(group([skin], skinMat));
+  const organParts = organs.filter(p => p.n !== 'skin');
+  anatomy.add(group(organParts, p => glass(organColor(p.n), .48)));
+  const boneMat = mat(COL.bone, { roughness: .62 });
+  const bones = group(sk, boneMat);
+  anatomy.add(bones);
+  const placed = place(holder, anatomy, partBox([skin]), maxW, maxH, false);
+  api.g.add(holder);
+  return { holder, anatomy, bones, sk, organs, skin, placed, boneMat };
+}
+
+/* ---------- Kelainan tulang belakang: empat tubuh utuh, bukan kolom tulang saja ---------- */
 const BUILD_spine = async api => {
-  const sk = await pack('skeleton');
-  const list = pick(sk, RE.spineBone).concat(pick(sk, RE.disc));
-  const spineBox = partBox(list), fullBox = partBox(sk);
-  const top = spineBox.max.y, H = spineBox.max.y - spineBox.min.y;
-  const A = .6;
-  const gauss = (t, m, w) => Math.exp(-Math.pow((t - m) / w, 2));
-  const defs = [
-    ['Normal', () => [0, 0], -Math.PI / 2],
-    ['Skoliosis', t => { const u = Math.min(1, t / .9); return [A * Math.sin(2 * Math.PI * u) * Math.sin(Math.PI * u), 0]; }, 0],
-    ['Kifosis', t => [0, -A * 1.05 * gauss(t, .4, .17)], -Math.PI / 2],
-    ['Lordosis', t => [0, A * .95 * gauss(t, .78, .11)], -Math.PI / 2]
+  const names = [
+    ['Normal', [0, 0]],
+    ['Skoliosis', [.34, 0]],
+    ['Kifosis', [0, .34]],
+    ['Lordosis', [0, -.34]]
   ];
-  const bone = new THREE.Color(COL.bone), bad = new THREE.Color(cssVar('--muscle'));
-  const discM = mat(COL.disc, { roughness: .4 });
-  const bodyM = glass(COL.bone, .16);
   api.rot = [];
-  defs.forEach(([name, f, ry], i) => {
-    const x = (i - 1.5) * 3.6;
-    const holder = new THREE.Group(); holder.position.x = x; holder.rotation.y = ry;
-    const figure = new THREE.Group();
-    figure.add(group(sk, bodyM));
-    const col = new THREE.Group();
-    list.forEach(p => {
-      const c = boxC(partBox([p])), t = (top - c.y) / H, e = .01;
-      const [dx, dz] = f(t), [ax, az] = f(t - e), [bx, bz] = f(t + e);
-      const sx = (bx - ax) / (2 * e) / -H, sz = (bz - az) / (2 * e) / -H;
-      const piece = new THREE.Group();
-      piece.position.set(c.x + dx, c.y, c.z + dz);
-      piece.rotation.set(Math.atan(sz), 0, -Math.atan(sx));
-      let m = discM;
-      if (p.g !== 'disc') {
-        m = mat(COL.bone, { roughness: .55, emissive: new THREE.Color(COL.disc), emissiveIntensity: .12 });
-        m.color.copy(bone).lerp(bad, Math.min(1, Math.hypot(dx, dz) / A) * .85);
-      }
-      const o = new THREE.Mesh(geo(p), m); o.position.copy(c).negate();
-      piece.add(o); col.add(piece);
+  for (let i = 0; i < names.length; i++) {
+    const [name, bend] = names[i];
+    const x = (i - 1.5) * 2.55;
+    const human = await addHumanAnatomy(api, x, 1.48, 3.35, { skinOpacity: .24 });
+    api.rot.push(human.holder);
+    const vertebrae = pick(human.sk, RE.spineBone).sort((a,b) => b.min[1]-a.min[1]);
+    const points = vertebrae.map((p, k) => {
+      const v = boxC(partBox([p]));
+      const t = k / Math.max(1, vertebrae.length - 1);
+      const offsetX = name === 'Skoliosis' ? bend[0] * Math.sin(t * Math.PI * 2) : 0;
+      const offsetZ = name === 'Kifosis' ? bend[1] * Math.exp(-Math.pow((t-.38)/.18,2))
+        : name === 'Lordosis' ? bend[1] * Math.exp(-Math.pow((t-.76)/.13,2)) : 0;
+      return human.placed.at(v).add(new THREE.Vector3(offsetX, 0, offsetZ));
     });
-    figure.add(col);
-    place(holder, figure, fullBox, 2.55, 5.35);
-    api.g.add(holder); api.rot.push(holder);
-    api.label(name, x, -2.95);
-  });
+    const spineLine = tube(points, .045, mat(name === 'Normal' ? '#55c7d7' : '#ff806e', { emissive: new THREE.Color(name === 'Normal' ? '#176b80' : '#7e251d'), emissiveIntensity: .25 }), 72);
+    human.holder.add(spineLine);
+    api.label(name, x, -1.92, .22);
+  }
 };
-viewer('spine', { hw: 7.7, hh: 3.4, cy: -.15 }, BUILD_spine);
+viewer('spine', { hw: 5.65, hh: 3.8, cy: 0, auto: false }, BUILD_spine);
 
-/* ---------- Fisura: satu anatomi manusia utuh, cedera tulang ditandai jelas ---------- */
-viewer('fisura', { hw: 2.8, hh: 4.65, cy: 0, auto: false, interactive: true }, async api => {
-  const human = await buildHuman(api, 'hero');
-  human.L.organ.visible = false;
-  human.L.saraf.visible = false;
-  human.L.kulit.visible = true;
-  human.L.kulit.traverse(mesh => {
-    if (!mesh.isMesh) return;
-    mesh.material.transparent = true;
-    mesh.material.opacity = .12;
-    mesh.material.depthWrite = false;
-  });
-
-  const target = {
-    leg: /^(left|right) femur$/i,
-    arm: /^(left|right) humerus$/i
-  };
-  const normalMat = mat('#d8e8ee', { roughness: .58 });
-  const fissureMat = mat('#efa45b', { roughness: .48, emissive: new THREE.Color('#9c4b1e'), emissiveIntensity: .18 });
-  const fractureMat = mat('#df695e', { roughness: .48, emissive: new THREE.Color('#8f2828'), emissiveIntensity: .22 });
-  const xrayMat = glass('#a6dff2', .64);
-  const crackMat = mat('#ffb15a', { emissive: new THREE.Color('#ff7b32'), emissiveIntensity: .8 });
-  const damage = new THREE.Group();
-  api.g.add(damage);
-  const boneObjects = [];
-
-  human.L.kerangka.traverse(o => {
-    if (!o.isMesh || !o.userData.part) return;
-    const name = o.userData.part.n || '';
-    o.userData.baseBoneMaterial = o.material;
-    o.userData.partName = name;
-    if (/^(left|right) (femur|humerus)$/i.test(name)) boneObjects.push(o);
-  });
-
-  const addCrack = part => {
+/* ---------- Fisura: perbandingan dua tubuh utuh, normal vs retak ---------- */
+viewer('fisura', { hw: 5.9, hh: 3.8, cy: 0, auto: false, interactive: true }, async api => {
+  const left = await addHumanAnatomy(api, -1.55, 1.55, 3.45, { skinOpacity: .23 });
+  const right = await addHumanAnatomy(api, 1.55, 1.55, 3.45, { skinOpacity: .23 });
+  api.label('KIRI • NORMAL', -1.55, -1.95, .2);
+  api.label('KANAN • FISURA', 1.55, -1.95, .2);
+  const targetPattern = { leg: /^(left|right) femur$/i, arm: /^(left|right) humerus$/i };
+  const crackLines = [];
+  const addCrack = (part, holder, placed) => {
     const b = partBox([part]), c = boxC(b), size = boxS(b);
-    const z = b.max.z + .012;
-    const y = c.y;
     const pts = [
-      new THREE.Vector3(c.x - size.x * .38, y + size.y * .035, z),
-      new THREE.Vector3(c.x - size.x * .08, y - size.y * .018, z + .008),
-      new THREE.Vector3(c.x + size.x * .08, y + size.y * .02, z + .01),
-      new THREE.Vector3(c.x + size.x * .36, y - size.y * .025, z)
-    ].map(v => new THREE.Vector3(...human.at(v)));
-    damage.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), crackMat));
+      new THREE.Vector3(c.x-size.x*.34,c.y+size.y*.035,b.max.z+.025),
+      new THREE.Vector3(c.x-size.x*.08,c.y-size.y*.02,b.max.z+.035),
+      new THREE.Vector3(c.x+size.x*.08,c.y+size.y*.02,b.max.z+.035),
+      new THREE.Vector3(c.x+size.x*.34,c.y-size.y*.025,b.max.z+.025)
+    ].map(v => placed.at(v));
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat('#ff654f',{emissive:new THREE.Color('#d52c24'),emissiveIntensity:.8}));
+    holder.add(line); crackLines.push(line);
   };
-
-  const selectedParts = kind => human.sk.filter(p => target[kind].test(p.n));
-  selectedParts('leg').filter(p => /^right/i.test(p.n)).forEach(addCrack);
-  selectedParts('arm').filter(p => /^right/i.test(p.n)).forEach(addCrack);
-
-  api.label('KIRI: TULANG NORMAL', -.9, -.15, .28);
-  api.label('KANAN: GARIS RETAK', .9, -.15, .28);
+  const targetParts = right.sk.filter(p => targetPattern[fisuraBone].test(p.n));
+  targetParts.forEach(p => addCrack(p, right.holder, right.placed));
   api.tick = () => {
-    const matcher = target[fisuraBone];
-    boneObjects.forEach(o => {
-      const isTarget = matcher.test(o.userData.partName || '');
-      const isRight = /^right/i.test(o.userData.partName || '');
-      o.material = xray ? xrayMat : !isTarget ? o.userData.baseBoneMaterial
-        : isRight ? fissureMat : normalMat;
+    const matcher = targetPattern[fisuraBone];
+    [left, right].forEach((human, idx) => {
+      human.bones.traverse(o => {
+        if (!o.isMesh || !o.userData.part) return;
+        const affected = idx === 1 && matcher.test(o.userData.part.n);
+        o.material = affected ? (xray ? mat('#a6dff2',{transparent:true,opacity:.75}) : mat('#e58b52',{emissive:new THREE.Color('#713619'),emissiveIntensity:.2})) : human.boneMat;
+      });
     });
-    damage.visible = true;
-    human.L.kulit.traverse(mesh => {
-      if (mesh.isMesh) mesh.material.opacity = xray ? .035 : .12;
-    });
+    crackLines.forEach(l => l.visible = !xray);
   };
+  const updateCrack = () => {
+    crackLines.forEach(l => l.visible = !xray);
+  };
+  const legBtn = $('#boneLegBtn'), armBtn = $('#boneArmBtn');
+  const refreshFisura = async () => {
+    crackLines.forEach(l => l.parent.remove(l));
+    crackLines.length = 0;
+    right.sk.filter(p => targetPattern[fisuraBone].test(p.n)).forEach(p => addCrack(p, right.holder, right.placed));
+    api.tick();
+    updateCrack();
+  };
+  legBtn.addEventListener('click', refreshFisura);
+  armBtn.addEventListener('click', refreshFisura);
+  $('#crackBtn').addEventListener('click', updateCrack);
+  api.tick();
 });
 
 /* ---------- Perbandingan 3D sendi lutut: normal, artritis, osteoartritis ---------- */
@@ -1154,7 +1139,7 @@ const BUILD_jointComparison = async (api, condition = 'arthritis') => {
   if (!patellae.length) throw new Error('Tempurung lutut tidak ditemukan');
 
   const boneMat = mat('#e8ddc7', { roughness: .68 });
-  const skinMat = glass('#dcae91', .19);
+  const skinMat = glass('#dcae91', .34);
   const normalJoint = mat('#55c7d7', { roughness: .35, emissive: new THREE.Color('#176b80'), emissiveIntensity: .12 });
   const inflamedMat = mat('#df554f', { roughness: .4, emissive: new THREE.Color('#8f211d'), emissiveIntensity: .24 });
   const synoviumMat = mat('#f08a7b', { transparent: true, opacity: .68, depthWrite: false, roughness: .4 });
@@ -1168,8 +1153,9 @@ const BUILD_jointComparison = async (api, condition = 'arthritis') => {
 
     const anatomy = new THREE.Group();
     anatomy.add(group([skin], skinMat));
+    anatomy.add(group(organs.filter(p => p.n !== 'skin'), p => glass(organColor(p.n), .42)));
     anatomy.add(group(sk, boneMat));
-    const placed = place(holder, anatomy, bodyBox, 2.2, 6.6, false);
+    const placed = place(holder, anatomy, bodyBox, 2.35, 6.8, false);
 
     const kneeCenters = patellae.map(p => placed.at(boxC(partBox([p]))));
     kneeCenters.forEach((kp, index) => {
@@ -1215,6 +1201,20 @@ const BUILD_artritis = api => BUILD_jointComparison(api, 'arthritis');
 const BUILD_osteoartritis = api => BUILD_jointComparison(api, 'osteo');
 viewer('artritis', { hw: 5.4, hh: 4.0, cy: 0, auto: false, interactive: true, zoom: .94 }, BUILD_artritis);
 viewer('oaCard', { hw: 5.4, hh: 4.0, cy: 0, auto: false, interactive: true, zoom: .94 }, BUILD_osteoartritis);
+
+
+/* ---------- Ilustrasi statis 3D untuk cara menjaga tulang dan sendi ---------- */
+viewer('boneCare', { hw: 3.2, hh: 6.7, cy: 0, auto: false, interactive: false }, async api => {
+  const human = await addHumanAnatomy(api, 0, 2.6, 6.2, { skinOpacity: .2 });
+  const jointNames = ['left shoulder','right shoulder','left elbow','right elbow','left hip','right hip','left knee','right knee'];
+  const marks = jointNames.map(name => one(human.sk, name)).filter(Boolean);
+  marks.forEach(p => {
+    const b = partBox([p]), c = boxC(b);
+    const marker = new THREE.Mesh(new THREE.SphereGeometry(.13,18,14), mat('#55c7d7',{emissive:new THREE.Color('#176b80'),emissiveIntensity:.3}));
+    marker.position.copy(human.placed.at(c));
+    human.holder.add(marker);
+  });
+});
 
 /* ---------- Model sel otot (skematis, mikroskopis) ---------- */
 function focusMats(groups) {
