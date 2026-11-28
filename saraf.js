@@ -1053,7 +1053,9 @@ async function addHumanAnatomy(api, x, maxW, maxH, opts = {}) {
 async function buildSpineVariant(api, cfg) {
   api.rot = [];
   const human = await addHumanAnatomy(api, 0, 1.85, 2.85, { skinOpacity: .12 });
-  if (cfg.side) human.holder.rotation.y = Math.PI / 2;
+  /* Sudut awal mengikuti ilustrasi referensi: tiga tampak samping, skoliosis tampak belakang. */
+  if (cfg.view === 'side') human.holder.rotation.y = Math.PI / 2;
+  else if (cfg.view === 'back') human.holder.rotation.y = Math.PI;
   api.rot.push(human.holder);
 
   const vertebrae = human.sk.filter(p => RE.spineBone.test(p.n));
@@ -1082,10 +1084,10 @@ async function buildSpineVariant(api, cfg) {
 }
 
 /* Kamera diperlebar agar seluruh tubuh terlihat utuh dan ukuran keempat model konsisten. */
-viewer('spineNormal', { hw: 1.45, hh: 2.15, cy: 0, auto: false, interactive: true, zoom: 1 }, api => buildSpineVariant(api, { type: 'normal', side: false }));
-viewer('spineScoliosis', { hw: 1.45, hh: 2.15, cy: 0, auto: false, interactive: true, zoom: 1 }, api => buildSpineVariant(api, { type: 'scoliosis', side: false }));
-viewer('spineKyphosis', { hw: 1.45, hh: 2.15, cy: 0, auto: false, interactive: true, zoom: 1 }, api => buildSpineVariant(api, { type: 'kyphosis', side: true }));
-viewer('spineLordosis', { hw: 1.45, hh: 2.15, cy: 0, auto: false, interactive: true, zoom: 1 }, api => buildSpineVariant(api, { type: 'lordosis', side: true }));
+viewer('spineNormal', { hw: 1.45, hh: 2.15, cy: 0, auto: false, interactive: true, zoom: 1 }, api => buildSpineVariant(api, { type: 'normal', view: 'side' }));
+viewer('spineKyphosis', { hw: 1.45, hh: 2.15, cy: 0, auto: false, interactive: true, zoom: 1 }, api => buildSpineVariant(api, { type: 'kyphosis', view: 'side' }));
+viewer('spineLordosis', { hw: 1.45, hh: 2.15, cy: 0, auto: false, interactive: true, zoom: 1 }, api => buildSpineVariant(api, { type: 'lordosis', view: 'side' }));
+viewer('spineScoliosis', { hw: 1.45, hh: 2.15, cy: 0, auto: false, interactive: true, zoom: 1 }, api => buildSpineVariant(api, { type: 'scoliosis', view: 'back' }));
 
 /* ---------- Fisura: satu anatomi manusia utuh, cedera tulang ditandai jelas ---------- */
 viewer('fisura', { hw: 2.8, hh: 4.65, cy: 0, auto: false, interactive: true }, async api => {
