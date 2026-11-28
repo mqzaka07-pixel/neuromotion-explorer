@@ -1104,7 +1104,6 @@ async function buildSpineVariant(api, cfg) {
       if (i < count - 1) {
         const disc = mesh(new THREE.CylinderGeometry(size.x * k * .052, size.x * k * .052, size.y * k * .009, 16), discMat);
         disc.position.set(d.x * size.x * k, (y - span / (count - 1) * .5 - center.y) * k, d.z * size.x * k);
-        disc.rotation.z = Math.PI / 2;
         human.holder.add(disc);
       }
     }
