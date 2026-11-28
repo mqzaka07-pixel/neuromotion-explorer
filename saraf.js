@@ -389,6 +389,10 @@ function pack(name) {
     packCache[name] = fetch('models/' + name + '.bin')
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
       .then(buf => {
+        if (buf.byteLength < 8) {
+          if (name === 'skeleton') return [];
+          throw new Error('Aset model ' + name + ' kosong atau tidak lengkap');
+        }
         const hl = new DataView(buf).getUint32(4, true);
         const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, hl)));
         head.parts.forEach(p => { p.buf = buf; p.base = 8 + hl; });
@@ -1030,7 +1034,7 @@ viewer('muscleOrgans', { hw: 7.2, hh: 2.25, cy: -.2 }, async api => {
 async function addHumanAnatomy(api, x, maxW, maxH, opts = {}) {
   const [sk, organs] = await Promise.all([pack('skeleton'), pack('organs')]);
   const skin = one(organs, 'skin');
-  if (!skin || !sk.length) throw new Error('Aset anatomi manusia tidak lengkap');
+  if (!skin) throw new Error('Aset kulit anatomi manusia tidak ditemukan');
   const holder = new THREE.Group();
   holder.position.x = x;
   const anatomy = new THREE.Group();
@@ -1059,28 +1063,58 @@ async function buildSpineVariant(api, cfg) {
   api.rot.push(human.holder);
 
   const vertebrae = human.sk.filter(p => RE.spineBone.test(p.n));
-  if (!vertebrae.length) throw new Error('Model ruas tulang belakang tidak ditemukan');
-  const ys = vertebrae.map(p => boxC(partBox([p])).y);
-  const top = Math.max(...ys), bottom = Math.min(...ys);
-  const span = Math.max(.001, top - bottom);
-
   const bendAt = t => {
-    if (cfg.type === 'scoliosis') return { x: .28 * Math.sin(t * Math.PI * 2), z: 0 };
-    if (cfg.type === 'kyphosis') return { x: 0, z: .34 * Math.exp(-Math.pow((t - .38) / .19, 2)) };
-    if (cfg.type === 'lordosis') return { x: 0, z: -.31 * Math.exp(-Math.pow((t - .76) / .14, 2)) };
-    return { x: 0, z: .025 * Math.sin(t * Math.PI * 2) };
+    if (cfg.type === 'scoliosis') return { x: .20 * Math.sin(t * Math.PI * 2), z: 0 };
+    if (cfg.type === 'kyphosis') return { x: 0, z: .24 * Math.exp(-Math.pow((t - .38) / .19, 2)) };
+    if (cfg.type === 'lordosis') return { x: 0, z: -.22 * Math.exp(-Math.pow((t - .76) / .14, 2)) };
+    return { x: 0, z: .018 * Math.sin(t * Math.PI * 2) };
   };
 
-  const shiftParts = parts => parts.forEach(part => {
-    const center = boxC(partBox([part]));
-    const t = (top - center.y) / span;
-    const d = bendAt(t);
-    const mesh = human.bones.children.find(o => o.userData.part === part);
-    if (mesh) mesh.position.add(new THREE.Vector3(d.x / human.placed.k, 0, d.z / human.placed.k));
-  });
-
-  shiftParts(vertebrae);
-  shiftParts(human.sk.filter(p => RE.disc.test(p.n)));
+  if (vertebrae.length) {
+    const ys = vertebrae.map(p => boxC(partBox([p])).y);
+    const top = Math.max(...ys), bottom = Math.min(...ys);
+    const span = Math.max(.001, top - bottom);
+    const shiftParts = parts => parts.forEach(part => {
+      const center = boxC(partBox([part]));
+      const t = (top - center.y) / span;
+      const d = bendAt(t);
+      const boneMesh = human.bones.children.find(o => o.userData.part === part);
+      if (boneMesh) boneMesh.position.add(new THREE.Vector3(d.x / human.placed.k, 0, d.z / human.placed.k));
+    });
+    shiftParts(vertebrae);
+    shiftParts(human.sk.filter(p => RE.disc.test(p.n)));
+  } else {
+    // Fallback edukatif: bentuk ruas 3D dibuat dari geometri Three.js
+    // ketika berkas rangka asli tidak tersedia. Siluet tubuh tetap memakai mesh kulit anatomi.
+    const bounds = partBox([human.skin]), size = boxS(bounds), center = boxC(bounds), k = human.placed.k;
+    const top = bounds.min.y + size.y * .79, bottom = bounds.min.y + size.y * .22;
+    const count = 24, span = top - bottom;
+    const spineMat = mat(COL.bone, { roughness: .58 });
+    const discMat = mat('#9fc9d7', { roughness: .45 });
+    const vertebraMeshes = [];
+    for (let i = 0; i < count; i++) {
+      const t = i / (count - 1);
+      const y = top - t * span;
+      const d = bendAt(t);
+      const v = mesh(new THREE.SphereGeometry(1, 20, 14), spineMat);
+      v.scale.set(size.x * k * .105, size.y * k * .014, size.x * k * .085);
+      v.position.set(d.x * size.x * k, (y - center.y) * k, d.z * size.x * k);
+      human.holder.add(v);
+      vertebraMeshes.push({ mesh: v, t, x: d.x * size.x * k, z: d.z * size.x * k });
+      if (i < count - 1) {
+        const disc = mesh(new THREE.CylinderGeometry(size.x * k * .052, size.x * k * .052, size.y * k * .009, 16), discMat);
+        disc.position.set(d.x * size.x * k, (y - span / (count - 1) * .5 - center.y) * k, d.z * size.x * k);
+        disc.rotation.z = Math.PI / 2;
+        human.holder.add(disc);
+      }
+    }
+    // Perbarui posisi kurva sesuai bentuk kelainan yang dipilih.
+    vertebraMeshes.forEach(v => {
+      const d = bendAt(v.t);
+      v.mesh.position.x = d.x * size.x * k;
+      v.mesh.position.z = d.z * size.x * k;
+    });
+  }
 }
 
 /* Kamera diperlebar agar seluruh tubuh terlihat utuh dan ukuran keempat model konsisten. */
