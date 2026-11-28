@@ -1086,6 +1086,9 @@ viewer('fisura', { hw: 5.9, hh: 3.8, cy: 0, auto: false, interactive: true }, as
   api.label('KANAN • FISURA', 1.55, -1.95, .2);
   const targetPattern = { leg: /^(left|right) femur$/i, arm: /^(left|right) humerus$/i };
   const crackLines = [];
+  const normalBoneMat = mat(COL.bone, { roughness: .62 });
+  const affectedBoneMat = mat('#e58b52', { roughness: .5, emissive: new THREE.Color('#713619'), emissiveIntensity: .2 });
+  const xrayBoneMat = glass('#a6dff2', .75);
   const addCrack = (part, holder, placed) => {
     const b = partBox([part]), c = boxC(b), size = boxS(b);
     const pts = [
