@@ -1056,7 +1056,7 @@ async function addHumanAnatomy(api, x, maxW, maxH, opts = {}) {
 /* ---------- Model anatomi manusia utuh: satu model per kartu ---------- */
 async function buildSpineVariant(api, cfg) {
   api.rot = [];
-  const human = await addHumanAnatomy(api, 0, 1.85, 2.85, { skinOpacity: .12 });
+  const human = await addHumanAnatomy(api, 0, 1.85, 2.85, { skinOpacity: .32 });
   /* Sudut awal mengikuti ilustrasi referensi: tiga tampak samping, skoliosis tampak belakang. */
   if (cfg.view === 'side') human.holder.rotation.y = Math.PI / 2;
   else if (cfg.view === 'back') human.holder.rotation.y = Math.PI;
@@ -1190,56 +1190,80 @@ viewer('fisura', { hw: 2.8, hh: 4.65, cy: 0, auto: false, interactive: true }, a
   };
 });
 
-/* ---------- Artritis dan osteoartritis: anatomi manusia utuh dengan sorotan sendi lutut ---------- */
-const BUILD_artritis = async api => {
-  const human = await buildHuman(api, 'hero');
-  human.L.organ.visible = false;
-  human.L.saraf.visible = false;
-  human.L.kulit.visible = true;
-  human.L.kulit.traverse(mesh => {
-    if (!mesh.isMesh) return;
-    mesh.material.transparent = true;
-    mesh.material.opacity = .3;
-    mesh.material.depthWrite = false;
-  });
+/* ---------- Perbandingan anatomi sendi: artritis dan osteoartritis dibedakan ---------- */
+const BUILD_jointComparison = async (api, condition = 'arthritis') => {
+  const [sk, organs] = await Promise.all([pack('skeleton'), pack('organs')]);
+  const skin = one(organs, 'skin');
+  if (!sk.length || !skin) throw new Error('Model anatomi manusia tidak lengkap');
 
-  const cartilageNormal = mat('#63c7e9', { roughness: .34, emissive: new THREE.Color('#218bb5'), emissiveIntensity: .3 });
-  const cartilageDamaged = mat('#e47a62', { roughness: .38, emissive: new THREE.Color('#a63d32'), emissiveIntensity: .3 });
-  const cartilageGroup = new THREE.Group();
-  api.g.add(cartilageGroup);
+  const bodyBox = partBox([skin]);
+  const patellae = ['left patella', 'right patella'].map(n => one(sk, n)).filter(Boolean);
+  if (!patellae.length) throw new Error('Tempurung lutut tidak ditemukan');
 
-  const centerAt = side => {
-    const fem = human.sk.find(p => p.n.toLowerCase() === side + ' femur');
-    const tib = human.sk.find(p => p.n.toLowerCase() === side + ' tibia');
-    if (!fem || !tib) return new THREE.Vector3();
-    const center = boxC(partBox([fem])).add(boxC(partBox([tib]))).multiplyScalar(.5);
-    return new THREE.Vector3(...human.at(center));
+  const boneMat = mat('#e8ddc7', { roughness: .68 });
+  const skinMat = glass('#dcae91', .34);
+  const normalJoint = mat('#55c7d7', { roughness: .35, emissive: new THREE.Color('#176b80'), emissiveIntensity: .12 });
+  const inflamedMat = mat('#df554f', { roughness: .4, emissive: new THREE.Color('#8f211d'), emissiveIntensity: .24 });
+  const synoviumMat = mat('#f08a7b', { transparent: true, opacity: .68, depthWrite: false, roughness: .4 });
+  const osteophyteMat = mat('#d19a55', { roughness: .55, emissive: new THREE.Color('#75451d'), emissiveIntensity: .12 });
+  const cartilageThinMat = mat('#e6a05d', { roughness: .4, emissive: new THREE.Color('#8c431e'), emissiveIntensity: .16 });
+
+  const makeHuman = (x, affected, title) => {
+    const holder = new THREE.Group();
+    holder.position.x = x;
+    api.g.add(holder);
+
+    const anatomy = new THREE.Group();
+    anatomy.add(group([skin], skinMat));
+    anatomy.add(group(organs.filter(p => p.n !== 'skin'), p => glass(organColor(p.n), .42)));
+    anatomy.add(group(sk, boneMat));
+    const placed = place(holder, anatomy, bodyBox, 2.35, 6.8, false);
+
+    const kneeCenters = patellae.map(p => placed.at(boxC(partBox([p]))));
+    kneeCenters.forEach((kp, index) => {
+      const sideOffset = index === 0 ? -.09 : .09;
+      const jointHalo = new THREE.Mesh(
+        new THREE.SphereGeometry(.19, 24, 18),
+        affected ? (condition === 'arthritis' ? synoviumMat : cartilageThinMat) : normalJoint
+      );
+      jointHalo.position.set(kp.x + sideOffset, kp.y, kp.z + .13);
+      jointHalo.scale.set(1.1, 1.15, .72);
+      holder.add(jointHalo);
+
+      if (affected && condition === 'arthritis') {
+        const swelling = new THREE.Mesh(new THREE.SphereGeometry(.22, 24, 18), inflamedMat);
+        swelling.position.set(kp.x + sideOffset, kp.y, kp.z + .22);
+        swelling.scale.set(1.25, 1.12, .62);
+        holder.add(swelling);
+      }
+      if (affected && condition === 'osteo') {
+        [-1, 1].forEach(dir => {
+          const spur = new THREE.Mesh(new THREE.SphereGeometry(.075, 16, 12), osteophyteMat);
+          spur.position.set(kp.x + sideOffset + dir * .16, kp.y - .08, kp.z + .22);
+          holder.add(spur);
+        });
+        const thinBand = new THREE.Mesh(new THREE.SphereGeometry(.12, 18, 12), cartilageThinMat);
+        thinBand.position.set(kp.x + sideOffset, kp.y - .13, kp.z + .24);
+        thinBand.scale.set(1.2, .25, .65);
+        holder.add(thinBand);
+      }
+    });
+
+    // Keterangan dipindahkan ke caption HTML agar tidak menutupi anatomi 3D.
+    return holder;
   };
-  const leftCenter = centerAt('left'), rightCenter = centerAt('right');
 
-  // Kartilago digambarkan sebagai bantalan di antara ujung tulang, bukan lingkaran penanda.
-  const makeCartilage = (center, material, thickness, xScale = 1) => {
-    const pad = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), material);
-    pad.position.copy(center);
-    pad.position.z += .19;
-    pad.scale.set(.24 * xScale, thickness, .19);
-    cartilageGroup.add(pad);
-    return pad;
-  };
-  makeCartilage(leftCenter, cartilageNormal, .075, 1);
-  makeCartilage(rightCenter, cartilageDamaged, .035, 1.12);
-
-  api.label('KIRI • NORMAL', leftCenter.x - .55, leftCenter.y - .38, .25);
-  api.label('KARTILAGO UTUH', leftCenter.x - .55, leftCenter.y - .68, .25);
-  api.label('KANAN • ARTRITIS', rightCenter.x + .6, rightCenter.y - .38, .25);
-  api.label('KARTILAGO MENIPIS', rightCenter.x + .6, rightCenter.y - .68, .25);
-
-  api.tick = t => {
-    if (kneeMoving && !reduceMotion) cartilageGroup.scale.y = 1 + .018 * Math.sin(t * 2.2);
-  };
+  makeHuman(-1.72, false, 'KIRI • NORMAL');
+  makeHuman(1.72, true, condition === 'osteo' ? 'KANAN • OSTEOARTRITIS' : 'KANAN • ARTRITIS');
+  api.label('PERBANDINGAN ANATOMI MANUSIA 3D', 0, 3.45, 0, api.g, true);
+  api.g.rotation.y = -.12;
+  api.g.rotation.x = .02;
 };
-viewer('artritis', { hw: 3.0, hh: 4.65, cy: 0, auto: false, interactive: true }, BUILD_artritis);
-viewer('oaCard', { hw: 2.35, hh: 4.65, cy: 0, auto: false, interactive: true }, BUILD_artritis);
+const BUILD_artritis = api => BUILD_jointComparison(api, 'arthritis');
+const BUILD_osteoartritis = api => BUILD_jointComparison(api, 'osteo');
+viewer('artritis', { hw: 5.4, hh: 4.0, cy: 0, auto: false, interactive: true, zoom: .94 }, BUILD_artritis);
+viewer('oaCard', { hw: 5.4, hh: 4.0, cy: 0, auto: false, interactive: true, zoom: .94 }, BUILD_osteoartritis);
+
 
 /* ---------- Model sel otot (skematis, mikroskopis) ---------- */
 function focusMats(groups) {
