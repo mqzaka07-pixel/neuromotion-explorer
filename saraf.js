@@ -1105,7 +1105,7 @@ viewer('fisura', { hw: 5.9, hh: 3.8, cy: 0, auto: false, interactive: true }, as
       human.bones.traverse(o => {
         if (!o.isMesh || !o.userData.part) return;
         const affected = idx === 1 && matcher.test(o.userData.part.n);
-        o.material = affected ? (xray ? mat('#a6dff2',{transparent:true,opacity:.75}) : mat('#e58b52',{emissive:new THREE.Color('#713619'),emissiveIntensity:.2})) : human.boneMat;
+        o.material = xray ? xrayBoneMat : affected ? affectedBoneMat : normalBoneMat;
       });
     });
     crackLines.forEach(l => l.visible = !xray);
