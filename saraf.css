@@ -381,13 +381,14 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 #kelainan [data-scene="spine"],
 #kelainan [data-scene="fisura"],
 #kelainan [data-scene="artritis"] { height: 440px; }
-#kelainan [data-scene="oaCard"] { height: 250px; }
+#kelainan [data-scene="oaCard"] { height: 440px; }
 .care-figure .care-static { height: 430px; cursor: default; touch-action: auto; }
 .care-figure .care-static canvas { pointer-events: none; }
 .care-figure .care-static .hint { display: none !important; }
 @media (max-width: 600px) {
   #kelainan [data-scene="spine"],
   #kelainan [data-scene="fisura"],
-  #kelainan [data-scene="artritis"] { height: 390px; }
+  #kelainan [data-scene="artritis"],
+  #kelainan [data-scene="oaCard"] { height: 390px; }
   .care-figure .care-static { height: 360px; }
 }
