@@ -3,19 +3,7 @@
    Navigasi, tab materi, simulasi alur, kuis, dan model 3D (Three.js)
    ========================================================= */
 const $ = (s, r = document) => r.querySelector(s);
-const $ = (s, r = document) => [...r.querySelectorAll(s)];
-
-/* Fallback gambar eksternal yang gagal dimuat agar tidak tampil sebagai ikon rusak. */
-const IMAGE_FALLBACK = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420"><rect width="720" height="420" fill="#10283c"/><path d="M250 290l80-95 65 70 55-55 90 80" fill="none" stroke="#63d7cc" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle cx="360" cy="125" r="34" fill="none" stroke="#f6c453" stroke-width="10"/><text x="360" y="365" fill="#d6e8f7" font-family="Arial,sans-serif" font-size="27" text-anchor="middle">Ilustrasi tidak tersedia</text></svg>'
-);
-$('img').forEach(img => img.addEventListener('error', () => {
-  if (img.dataset.fallbackApplied) return;
-  img.dataset.fallbackApplied = '1';
-  img.src = IMAGE_FALLBACK;
-  img.classList.add('asset-fallback');
-}));
-
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 /* ---------------------------------------------------------
    1. NAVIGASI HALAMAN (hash routing)
@@ -137,7 +125,12 @@ $('#crackBtn').addEventListener('click', e => {
   e.currentTarget.textContent = xray ? 'Mode normal' : 'Mode rontgen';
 });
 
-// Kontrol tombol jeda gerak lutut dihapus karena tidak digunakan.
+let kneeMoving = true;
+$('#kneeBtn').addEventListener('click', e => {
+  kneeMoving = !kneeMoving;
+  e.currentTarget.classList.toggle('sel', kneeMoving);
+  e.currentTarget.textContent = kneeMoving ? 'Jeda gerak lutut' : 'Gerakkan lutut';
+});
 
 /* ---------------------------------------------------------
    4. SIMULASI ALUR GERAK SADAR / REFLEKS (Gambar + Panah ->)
@@ -520,7 +513,7 @@ function place(holder, obj, box, maxW, maxH, round = true) {
 /**
  * Membuat satu penampil 3D.
  */
-function viewerNow(name, opt, build) {
+function viewer(name, opt, build) {
   const el = document.querySelector('[data-scene="' + name + '"]');
   if (!el) return;
   if (typeof THREE === 'undefined') {
@@ -540,19 +533,15 @@ function viewerNow(name, opt, build) {
   const rim = new THREE.DirectionalLight(0x9fdcff, .45); rim.position.set(-6, 2, -6); scene.add(rim);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   el.appendChild(renderer.domElement);
-  const interactive = opt.interactive !== false;
-  if (interactive) {
-    const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = '↔ geser untuk memutar'; el.appendChild(hint);
-  }
+  const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = '↔ geser untuk memutar'; el.appendChild(hint);
   const loading = document.createElement('div'); loading.className = 'loading'; loading.textContent = 'Memuat model 3D…'; el.appendChild(loading);
 
   const st = { visible: false, ready: false, w: 0, h: 0, drag: false, idleAt: 0 };
   const api = {
     g, rot: [g], labels: [], tick: null, renderer,
-    label(text, x, y, z = 0, parent, large = false) {
+    label(text, x, y, z = 0, parent) {
       const d = document.createElement('div');
-      d.className = large ? 'lb lb-large' : 'lb'; d.textContent = text;
-      if (large) { d.style.fontSize = 'clamp(13px, 1.05vw, 16px)'; d.style.fontWeight = '750'; d.style.padding = '5px 8px'; d.style.lineHeight = '1.3'; d.style.maxWidth = '175px'; d.style.whiteSpace = 'normal'; d.style.textAlign = 'center'; } el.appendChild(d);
+      d.className = 'lb'; d.textContent = text; el.appendChild(d);
       const l = { d, v: new THREE.Vector3(x, y, z), parent, show: true };
       api.labels.push(l);
       return l;
@@ -586,19 +575,17 @@ function viewerNow(name, opt, build) {
   });
 
   let lx = 0, ly = 0;
-  if (interactive) {
-    el.addEventListener('pointerdown', e => { st.drag = true; lx = e.clientX; ly = e.clientY; el.setPointerCapture(e.pointerId); });
-    el.addEventListener('pointermove', e => {
-      if (!st.drag) return;
-      const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
-      api.rot.forEach(o => { o.rotation.y += dx * .01; });
-      const tm = opt.tiltMax ?? .5;
-      g.rotation.x = Math.max(-tm, Math.min(tm, g.rotation.x + dy * .006));
-    });
-    const end = () => { st.drag = false; st.idleAt = performance.now(); };
-    el.addEventListener('pointerup', end);
-    el.addEventListener('pointercancel', end);
-  }
+  el.addEventListener('pointerdown', e => { st.drag = true; lx = e.clientX; ly = e.clientY; el.setPointerCapture(e.pointerId); hint.style.display = 'none'; });
+  el.addEventListener('pointermove', e => {
+    if (!st.drag) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
+    api.rot.forEach(o => { o.rotation.y += dx * .01; });
+    const tm = opt.tiltMax ?? .5;
+    g.rotation.x = Math.max(-tm, Math.min(tm, g.rotation.x + dy * .006));
+  });
+  const end = () => { st.drag = false; st.idleAt = performance.now(); };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
 
   st.render = t => {
     if (!st.ready) return;
@@ -617,24 +604,6 @@ function viewerNow(name, opt, build) {
     });
   };
   viewers.push(st);
-}
-
-/* Inisialisasi model hanya saat mendekati layar: mengurangi beban GPU pada HP. */
-function viewer(name, opt, build) {
-  const el = document.querySelector('[data-scene="' + name + '"]');
-  if (!el) return;
-  if (!('IntersectionObserver' in window)) {
-    viewerNow(name, opt, build);
-    return;
-  }
-  let started = false;
-  const io = new IntersectionObserver(entries => {
-    if (started || !entries.some(e => e.isIntersecting)) return;
-    started = true;
-    io.disconnect();
-    viewerNow(name, opt, build);
-  }, { rootMargin: '220px 0px', threshold: 0.01 });
-  io.observe(el);
 }
 
 function loop(ms) {
@@ -849,7 +818,7 @@ const BUILD_body = async api => {
 viewer('body', { hw: 3.4, hh: 8.4 }, BUILD_body);
 
 /* Kartu Beranda: model rangka manusia normal yang dirender langsung dan dapat diputar. */
-viewer('homeNormalSkeleton', { hw: 3.4, hh: 8.4, auto: false, interactive: false, zoom: .72 }, async api => {
+viewer('homeNormalSkeleton', { hw: 3.4, hh: 8.4, auto: false, zoom: .72 }, async api => {
   const sk = await pack('skeleton');
   const bone = mat(COL.bone, { roughness: .65 });
   place(api.g, group(sk, bone), partBox(sk), 3.4, 8.4);
@@ -1061,8 +1030,7 @@ viewer('muscleOrgans', { hw: 7.2, hh: 2.25, cy: -.2 }, async api => {
 const BUILD_spine = async api => {
   const sk = await pack('skeleton');
   const list = pick(sk, RE.spineBone).concat(pick(sk, RE.disc));
-  const spineBox = partBox(list), fullBox = partBox(sk);
-  const top = spineBox.max.y, H = spineBox.max.y - spineBox.min.y;
+  const box = partBox(list), top = box.max.y, H = box.max.y - box.min.y;
   const A = .6;
   const gauss = (t, m, w) => Math.exp(-Math.pow((t - m) / w, 2));
   const defs = [
@@ -1073,13 +1041,10 @@ const BUILD_spine = async api => {
   ];
   const bone = new THREE.Color(COL.bone), bad = new THREE.Color(cssVar('--muscle'));
   const discM = mat(COL.disc, { roughness: .4 });
-  const bodyM = glass(COL.bone, .16);
   api.rot = [];
   defs.forEach(([name, f, ry], i) => {
-    const x = (i - 1.5) * 3.6;
+    const x = (i - 1.5) * 3.4;
     const holder = new THREE.Group(); holder.position.x = x; holder.rotation.y = ry;
-    const figure = new THREE.Group();
-    figure.add(group(sk, bodyM));
     const col = new THREE.Group();
     list.forEach(p => {
       const c = boxC(partBox([p])), t = (top - c.y) / H, e = .01;
@@ -1090,161 +1055,172 @@ const BUILD_spine = async api => {
       piece.rotation.set(Math.atan(sz), 0, -Math.atan(sx));
       let m = discM;
       if (p.g !== 'disc') {
-        m = mat(COL.bone, { roughness: .55, emissive: new THREE.Color(COL.disc), emissiveIntensity: .12 });
+        m = mat(COL.bone, { roughness: .65 });
         m.color.copy(bone).lerp(bad, Math.min(1, Math.hypot(dx, dz) / A) * .85);
       }
       const o = new THREE.Mesh(geo(p), m); o.position.copy(c).negate();
       piece.add(o); col.add(piece);
     });
-    figure.add(col);
-    place(holder, figure, fullBox, 2.55, 5.35);
+    place(holder, col, box, 2.6, 5.4);
     api.g.add(holder); api.rot.push(holder);
     api.label(name, x, -2.95);
   });
 };
-viewer('spine', { hw: 7.7, hh: 3.4, cy: -.15 }, BUILD_spine);
+viewer('spine', { hw: 6.8, hh: 3.3, cy: -.15 }, BUILD_spine);
 
-/* ---------- Fisura: satu anatomi manusia utuh, cedera tulang ditandai jelas ---------- */
-viewer('fisura', { hw: 2.8, hh: 4.65, cy: 0, auto: false, interactive: true }, async api => {
-  const human = await buildHuman(api, 'hero');
-  human.L.organ.visible = false;
-  human.L.saraf.visible = false;
-  human.L.kulit.visible = true;
-  human.L.kulit.traverse(mesh => {
-    if (!mesh.isMesh) return;
-    mesh.material.transparent = true;
-    mesh.material.opacity = .12;
-    mesh.material.depthWrite = false;
-  });
+/* ---------- Fisura (retak tulang) pada Tulang Kaki & Tulang Lengan ---------- */
+viewer('fisura', { hw: 4.6, hh: 2.9, cy: -.1 }, async api => {
+  const sk = await pack('skeleton');
+  const boneNormal = mat('#e9e2cf', { roughness: .7, side: THREE.DoubleSide });
+  const boneX = glass('#7fd8ff', .3); boneX.side = THREE.DoubleSide;
+  const crackM = mat('--muscle', { emissive: new THREE.Color(cssVar('--muscle')), emissiveIntensity: .8 });
+  api.rot = [];
+  const bones = [];
 
-  const target = {
-    leg: /^(left|right) femur$/i,
-    arm: /^(left|right) humerus$/i
-  };
-  const normalMat = mat('#d8e8ee', { roughness: .58 });
-  const fissureMat = mat('#efa45b', { roughness: .48, emissive: new THREE.Color('#9c4b1e'), emissiveIntensity: .18 });
-  const fractureMat = mat('#df695e', { roughness: .48, emissive: new THREE.Color('#8f2828'), emissiveIntensity: .22 });
-  const xrayMat = glass('#a6dff2', .64);
-  const crackMat = mat('#ffb15a', { emissive: new THREE.Color('#ff7b32'), emissiveIntensity: .8 });
-  const damage = new THREE.Group();
-  api.g.add(damage);
-  const boneObjects = [];
+  function buildBoneSet(partName) {
+    const part = one(sk, partName), fg = geo(part), fb = partBox([part]);
+    const y0 = boxC(fb).y + .2, t0 = (y0 - fb.min.y) / (fb.max.y - fb.min.y);
+    const c0 = sliceCenter(part, t0 - .015, t0 + .015); c0.y = y0;
+    const rBone = Math.max(.08, Math.min(fb.max.x - fb.min.x, fb.max.z - fb.min.z) * .22);
+    const setGroup = new THREE.Group();
+    api.g.add(setGroup);
 
-  human.L.kerangka.traverse(o => {
-    if (!o.isMesh || !o.userData.part) return;
-    const name = o.userData.part.n || '';
-    o.userData.baseBoneMaterial = o.material;
-    o.userData.partName = name;
-    if (/^(left|right) (femur|humerus)$/i.test(name)) boneObjects.push(o);
-  });
+    function crack(yc, a0, a1, wob, seed) {
+      const pts = [];
+      for (let i = 0; i <= 46; i++) {
+        const a = a0 + (a1 - a0) * i / 46;
+        const j = Math.sin(i * 7.3 + seed) * .025 + Math.sin(i * 2.1 + seed) * .015;
+        const y = yc + Math.sin(a * 1.5) * wob + j;
+        const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+        const hit = surfaceHit(fg, new THREE.Vector3(c0.x, y, c0.z), dir);
+        if (hit) pts.push(hit.add(dir.multiplyScalar(.012)).toArray());
+      }
+      return tube(pts, .022, crackM, 140);
+    }
+    const jag = p => y0 + .06 * Math.sin(3 * Math.atan2(p.z - c0.z, p.x - c0.x)) + .03 * Math.sin(7 * Math.atan2(p.z - c0.z, p.x - c0.x));
 
-  const addCrack = part => {
-    const b = partBox([part]), c = boxC(b), size = boxS(b);
-    const z = b.max.z + .012;
-    const y = c.y;
-    const pts = [
-      new THREE.Vector3(c.x - size.x * .38, y + size.y * .035, z),
-      new THREE.Vector3(c.x - size.x * .08, y - size.y * .018, z + .008),
-      new THREE.Vector3(c.x + size.x * .08, y + size.y * .02, z + .01),
-      new THREE.Vector3(c.x + size.x * .36, y - size.y * .025, z)
-    ].map(v => new THREE.Vector3(...human.at(v)));
-    damage.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), crackMat));
-  };
-
-  const selectedParts = kind => human.sk.filter(p => target[kind].test(p.n));
-  selectedParts('leg').filter(p => /^right/i.test(p.n)).forEach(addCrack);
-  selectedParts('arm').filter(p => /^right/i.test(p.n)).forEach(addCrack);
-
-  api.label('KIRI: TULANG NORMAL', -.9, -.15, .28);
-  api.label('KANAN: GARIS RETAK', .9, -.15, .28);
-  api.tick = () => {
-    const matcher = target[fisuraBone];
-    boneObjects.forEach(o => {
-      const isTarget = matcher.test(o.userData.partName || '');
-      const isRight = /^right/i.test(o.userData.partName || '');
-      o.material = xray ? xrayMat : !isTarget ? o.userData.baseBoneMaterial
-        : isRight ? fissureMat : normalMat;
+    let crackLabel = null;
+    [-3.1, 0, 3.1].forEach((x, i) => {
+      const h = new THREE.Group(); h.position.x = x; setGroup.add(h); api.rot.push(h);
+      const obj = new THREE.Group();
+      if (i < 2) {
+        const b = mesh(fg, boneNormal); obj.add(b); bones.push(b);
+        if (i === 1) { obj.add(crack(y0, -.4, 3.4, .14, 1)); obj.add(crack(y0 + .28, 1.2, 2.3, .06, 4)); }
+      } else {
+        const low = mesh(subGeo(fg, p => p.y < jag(p)), boneNormal);
+        const topP = new THREE.Group(); topP.position.copy(c0).add(new THREE.Vector3(.14, .26, 0)); topP.rotation.z = -.2;
+        const top = mesh(subGeo(fg, p => p.y >= jag(p)), boneNormal); top.position.copy(c0).negate(); topP.add(top);
+        const ring = mesh(new THREE.TorusGeometry(rBone, .014, 8, 32).rotateX(Math.PI / 2), crackM, c0.x, y0, c0.z);
+        obj.add(low, topP, ring); bones.push(low, top);
+      }
+      const pl = place(h, obj, fb, 1.6, 4.4);
+      if (i === 1) crackLabel = api.label('Garis retakan', ...pl.at(c0).add(new THREE.Vector3(1.05, .55, 0)).toArray(), h);
     });
-    damage.visible = true;
-    human.L.kulit.traverse(mesh => {
-      if (mesh.isMesh) mesh.material.opacity = xray ? .035 : .12;
-    });
+    return { setGroup, crackLabel };
+  }
+
+  const legSet = buildBoneSet('right femur');
+  const armSet = buildBoneSet('right humerus');
+
+  api.label('Tulang normal', -3.1, -2.6);
+  api.label('Fisura (retak)', 0, -2.6);
+  api.label('Fraktur (patah)', 3.1, -2.6);
+
+  api.tick = t => {
+    const isLeg = fisuraBone === 'leg';
+    legSet.setGroup.visible = isLeg;
+    armSet.setGroup.visible = !isLeg;
+    if (legSet.crackLabel) legSet.crackLabel.show = isLeg;
+    if (armSet.crackLabel) armSet.crackLabel.show = !isLeg;
+    bones.forEach(b => { b.material = xray ? boneX : boneNormal; });
+    crackM.emissiveIntensity = (xray ? 1.6 : .7) + .4 * Math.sin(t * 4);
   };
 });
 
-/* ---------- Perbandingan 3D sendi lutut: normal, artritis, osteoartritis ---------- */
-/* ---------- Perbandingan anatomi manusia utuh: normal vs kelainan sendi ---------- */
-const BUILD_jointComparison = async (api, condition = 'arthritis') => {
-  const [sk, organs] = await Promise.all([pack('skeleton'), pack('organs')]);
-  const skin = one(organs, 'skin');
-  if (!sk.length || !skin) throw new Error('Model anatomi manusia tidak lengkap');
+/* ---------- Artritis (radang sendi lutut) ---------- */
+const BUILD_artritis = async api => {
+  const sk = await pack('skeleton');
+  const B = n => one(sk, n);
+  const fem = B('right femur'), tib = B('right tibia'), fib = B('right fibula'), pat = B('right patella');
+  const fmin = fem.min[1], tmax = tib.max[1], R = 1.45;
+  const boneM = mat('#e9e2cf', { roughness: .7, side: THREE.DoubleSide });
+  const cartGood = mat(COL.cart, { roughness: .3, transparent: true, opacity: .8 });
+  const cartBad = mat(COL.cart, { roughness: .85, transparent: true, opacity: .45 });
+  const spurM = mat('#d8c9a3', { roughness: .9 });
+  const inflame = mat('--muscle', { transparent: true, opacity: .2, depthWrite: false, emissive: new THREE.Color(cssVar('--muscle')), emissiveIntensity: .5 });
+  const femG = subGeo(geo(fem), p => p.y < fmin + R);
+  const tibG = subGeo(geo(tib), p => p.y > tmax - R);
+  const fibG = subGeo(geo(fib), p => p.y > tmax - R);
+  const P = sliceCenter(fem, 0, .035); P.y = fmin + .22;
+  const tc = sliceCenter(tib, .965, 1);
+  api.rot = [];
+  const knees = [];
 
-  const bodyBox = partBox([skin]);
-  const patellae = ['left patella', 'right patella'].map(n => one(sk, n)).filter(Boolean);
-  if (!patellae.length) throw new Error('Tempurung lutut tidak ditemukan');
-
-  const boneMat = mat('#e8ddc7', { roughness: .68 });
-  const skinMat = glass('#dcae91', .19);
-  const normalJoint = mat('#55c7d7', { roughness: .35, emissive: new THREE.Color('#176b80'), emissiveIntensity: .12 });
-  const inflamedMat = mat('#df554f', { roughness: .4, emissive: new THREE.Color('#8f211d'), emissiveIntensity: .24 });
-  const synoviumMat = mat('#f08a7b', { transparent: true, opacity: .68, depthWrite: false, roughness: .4 });
-  const osteophyteMat = mat('#d19a55', { roughness: .55, emissive: new THREE.Color('#75451d'), emissiveIntensity: .12 });
-  const cartilageThinMat = mat('#e6a05d', { roughness: .4, emissive: new THREE.Color('#8c431e'), emissiveIntensity: .16 });
-
-  const makeHuman = (x, affected, title) => {
-    const holder = new THREE.Group();
-    holder.position.x = x;
-    api.g.add(holder);
-
-    const anatomy = new THREE.Group();
-    anatomy.add(group([skin], skinMat));
-    anatomy.add(group(sk, boneMat));
-    const placed = place(holder, anatomy, bodyBox, 2.2, 6.6, false);
-
-    const kneeCenters = patellae.map(p => placed.at(boxC(partBox([p]))));
-    kneeCenters.forEach((kp, index) => {
-      const sideOffset = index === 0 ? -.09 : .09;
-      const jointHalo = new THREE.Mesh(
-        new THREE.SphereGeometry(.19, 24, 18),
-        affected ? (condition === 'arthritis' ? synoviumMat : cartilageThinMat) : normalJoint
-      );
-      jointHalo.position.set(kp.x + sideOffset, kp.y, kp.z + .13);
-      jointHalo.scale.set(1.1, 1.15, .72);
-      holder.add(jointHalo);
-
-      if (affected && condition === 'arthritis') {
-        const swelling = new THREE.Mesh(new THREE.SphereGeometry(.22, 24, 18), inflamedMat);
-        swelling.position.set(kp.x + sideOffset, kp.y, kp.z + .22);
-        swelling.scale.set(1.25, 1.12, .62);
-        holder.add(swelling);
+  function knee(x, sick) {
+    const k = new THREE.Group(); k.position.x = x; k.rotation.y = 1.1;
+    const obj = new THREE.Group();
+    const th = sick ? .009 : .035;
+    obj.add(mesh(femG, boneM), mesh(geo(pat), boneM));
+    obj.add(mesh(subGeo(inflate(geo(fem), th), p => p.y < fmin + .3), sick ? cartBad : cartGood));
+    const pivot = new THREE.Group(); pivot.position.copy(P); obj.add(pivot);
+    const low = new THREE.Group(); low.position.copy(P).negate(); pivot.add(low);
+    low.add(mesh(tibG, boneM), mesh(fibG, boneM));
+    low.add(mesh(subGeo(inflate(geo(tib), th), (p, n) => p.y > tmax - .08 && n.y > .45), sick ? cartBad : cartGood));
+    let swell = null, spur = null;
+    if (sick) {
+      const spurAt = (geoB, ctr, y, parent, i) => {
+        const a = i / 9 * Math.PI * 2, dir = new THREE.Vector3(Math.cos(a), -.15, Math.sin(a)).normalize();
+        const hit = surfaceHit(geoB, new THREE.Vector3(ctr.x, y, ctr.z), new THREE.Vector3(dir.x, 0, dir.z));
+        if (!hit) return null;
+        const c = mesh(new THREE.ConeGeometry(.035, .12, 8).translate(0, .05, 0), spurM);
+        c.position.copy(hit); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        parent.add(c);
+        return hit;
+      };
+      for (let i = 0; i < 9; i++) { const h = spurAt(geo(tib), tc, tmax - .05, low, i); if (h && i === 0) spur = h; }
+      for (let i = 0; i < 9; i += 2) spurAt(geo(fem), P, fmin + .14, obj, i + .5);
+      for (let i = 0; i < 6; i++) {
+        const from = P.clone().add(new THREE.Vector3(Math.cos(i * 1.3) * .25, 0, Math.sin(i * 1.3) * .2));
+        const hit = hitsAlong(geo(fem), from, new THREE.Vector3(0, -1, 0))[0];
+        if (hit) obj.add(mesh(new THREE.SphereGeometry(.03, 8, 6), mat('#8b2a1f'), hit.x, hit.y - .006, hit.z));
       }
-      if (affected && condition === 'osteo') {
-        [-1, 1].forEach(dir => {
-          const spur = new THREE.Mesh(new THREE.SphereGeometry(.075, 16, 12), osteophyteMat);
-          spur.position.set(kp.x + sideOffset + dir * .16, kp.y - .08, kp.z + .22);
-          holder.add(spur);
-        });
-        const thinBand = new THREE.Mesh(new THREE.SphereGeometry(.12, 18, 12), cartilageThinMat);
-        thinBand.position.set(kp.x + sideOffset, kp.y - .13, kp.z + .24);
-        thinBand.scale.set(1.2, .25, .65);
-        holder.add(thinBand);
+      swell = mesh(new THREE.SphereGeometry(.62, 28, 20), inflame, P.x, P.y - .12, P.z);
+      swell.scale.set(1, 1.25, 1);
+      obj.add(swell);
+    }
+    const box = partBox([fem, tib]); box.min.y = tmax - R; box.max.y = fmin + R;
+    const pl = place(k, obj, box, 2.6, 5.2);
+    api.g.add(k); api.rot.push(k);
+    knees.push({ k, pivot, sick, swell, phase: 0 });
+    return { k, pl, spur };
+  }
+
+  const kn = knee(-2.4, false);
+  const ks = knee(2.4, true);
+  api.label('Lutut normal', -2.4, -2.9);
+  api.label('Artritis', 2.4, -2.9);
+  api.label('Tulang rawan tebal', ...kn.pl.at(P).add(new THREE.Vector3(0, -.75, 1.1)).toArray(), kn.k);
+  api.label('Radang & bengkak', ...ks.pl.at(P).add(new THREE.Vector3(0, 1.45, 0)).toArray(), ks.k);
+  if (ks.spur) api.label('Taji tulang', ...ks.pl.at(ks.spur).add(new THREE.Vector3(.2, -.3, .6)).toArray(), ks.k);
+
+  let last = 0;
+  api.tick = t => {
+    const dt = Math.min(.05, t - last); last = t;
+    knees.forEach(n => {
+      if (kneeMoving && !reduceMotion) n.phase += dt;
+      const wave = .5 - .5 * Math.cos(n.phase * 1.4);
+      n.pivot.rotation.x = n.sick ? .32 * wave + .02 * Math.sin(n.phase * 23) * wave : 1.25 * wave;
+      if (n.swell) {
+        const p = 1 + .05 * Math.sin(t * 3);
+        n.swell.scale.set(p, 1.25 * p, p);
+        inflame.emissiveIntensity = .4 + .3 * Math.sin(t * 3);
       }
     });
-
-    // Keterangan dipindahkan ke caption HTML agar tidak menutupi anatomi 3D.
-    return holder;
   };
-
-  makeHuman(-1.72, false, 'KIRI • NORMAL');
-  makeHuman(1.72, true, condition === 'osteo' ? 'KANAN • OSTEOARTRITIS' : 'KANAN • ARTRITIS');
-  api.label('PERBANDINGAN ANATOMI MANUSIA 3D', 0, 3.45, 0, api.g, true);
-  api.g.rotation.y = -.12;
-  api.g.rotation.x = .02;
 };
-const BUILD_artritis = api => BUILD_jointComparison(api, 'arthritis');
-const BUILD_osteoartritis = api => BUILD_jointComparison(api, 'osteo');
-viewer('artritis', { hw: 5.4, hh: 4.0, cy: 0, auto: false, interactive: true, zoom: .94 }, BUILD_artritis);
-viewer('oaCard', { hw: 5.4, hh: 4.0, cy: 0, auto: false, interactive: true, zoom: .94 }, BUILD_osteoartritis);
+viewer('artritis', { hw: 4.8, hh: 3.1, cy: -.1, auto: false }, BUILD_artritis);
+/* Kartu osteoartritis: model lutut 3D mandiri yang juga bisa diputar. */
+viewer('oaCard', { hw: 4.8, hh: 3.1, cy: -.1, auto: false }, BUILD_artritis);
 
 /* ---------- Model sel otot (skematis, mikroskopis) ---------- */
 function focusMats(groups) {
