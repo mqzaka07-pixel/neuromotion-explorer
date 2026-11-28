@@ -1141,65 +1141,66 @@ async function addHumanAnatomy(api, x, maxW, maxH, opts = {}) {
 /* ---------- Model anatomi manusia utuh: satu model per kartu ---------- */
 async function buildSpineVariant(api, cfg) {
   api.rot = [];
-  const human = await addHumanAnatomy(api, 0, 1.85, 2.85, { skinOpacity: .32 });
-  /* Sudut awal mengikuti ilustrasi referensi: tiga tampak samping, skoliosis tampak belakang. */
-  if (cfg.view === 'side') human.holder.rotation.y = Math.PI / 2;
-  else if (cfg.view === 'back') human.holder.rotation.y = Math.PI;
-  api.rot.push(human.holder);
+  // Hanya dua lapisan: kulit luar transparan dan rangka asli.
+  // Organ, otot, dan jaringan lunak sengaja tidak dimuat pada panel ini.
+  const [sk, organs] = await Promise.all([pack('skeleton'), pack('organs')]);
+  const skin = one(organs, 'skin');
+  if (!skin) throw new Error('Aset kulit anatomi manusia tidak ditemukan');
 
-  const vertebrae = human.sk.filter(p => RE.spineBone.test(p.n));
-  const bendAt = t => {
-    if (cfg.type === 'scoliosis') return { x: .20 * Math.sin(t * Math.PI * 2), z: 0 };
-    if (cfg.type === 'kyphosis') return { x: 0, z: .24 * Math.exp(-Math.pow((t - .38) / .19, 2)) };
-    if (cfg.type === 'lordosis') return { x: 0, z: -.22 * Math.exp(-Math.pow((t - .76) / .14, 2)) };
-    return { x: 0, z: .018 * Math.sin(t * Math.PI * 2) };
+  const holder = new THREE.Group();
+  const anatomy = new THREE.Group();
+  const skinLayer = group([skin], glass(COL.skin, .19));
+  const boneLayer = group(sk, mat(COL.bone, { roughness: .62 }));
+  anatomy.add(skinLayer, boneLayer);
+  const placed = place(holder, anatomy, partBox([skin]), 1.85, 2.85, false);
+  api.g.add(holder);
+
+  // Kifosis/lordosis dilihat dari samping; skoliosis dilihat dari belakang.
+  if (cfg.view === 'side') holder.rotation.y = Math.PI / 2;
+  else if (cfg.view === 'back') holder.rotation.y = Math.PI;
+  api.rot.push(holder);
+
+  const vertebrae = sk.filter(p => RE.spineBone.test(p.n));
+  const discs = sk.filter(p => RE.disc.test(p.n));
+  if (!vertebrae.length) throw new Error('Ruas tulang belakang tidak ditemukan pada aset rangka');
+
+  const ys = vertebrae.map(p => boxC(partBox([p])).y);
+  const top = Math.max(...ys), bottom = Math.min(...ys);
+  const span = Math.max(.001, top - bottom);
+
+  // Kurva diterapkan pada posisi ruas vertebra dan diskus asli,
+  // bukan menambahkan batang atau bola pengganti.
+  const curveAt = t => {
+    if (cfg.type === 'scoliosis') {
+      // Lengkungan lateral berbentuk S jika dilihat dari belakang.
+      return { x: .17 * Math.sin(t * Math.PI * 2.0), z: 0 };
+    }
+    if (cfg.type === 'kyphosis') {
+      // Peningkatan lengkung torakal ke arah belakang pada tampak samping.
+      return { x: .15 * Math.exp(-Math.pow((t - .38) / .20, 2)), z: 0 };
+    }
+    if (cfg.type === 'lordosis') {
+      // Peningkatan lengkung lumbal ke arah depan pada tampak samping.
+      return { x: -.14 * Math.exp(-Math.pow((t - .77) / .15, 2)), z: 0 };
+    }
+    // Lengkung fisiologis normal yang ringan.
+    return { x: .035 * Math.sin(t * Math.PI * 1.7), z: 0 };
   };
 
-  if (vertebrae.length) {
-    const ys = vertebrae.map(p => boxC(partBox([p])).y);
-    const top = Math.max(...ys), bottom = Math.min(...ys);
-    const span = Math.max(.001, top - bottom);
-    const shiftParts = parts => parts.forEach(part => {
-      const center = boxC(partBox([part]));
-      const t = (top - center.y) / span;
-      const d = bendAt(t);
-      const boneMesh = human.bones.children.find(o => o.userData.part === part);
-      if (boneMesh) boneMesh.position.add(new THREE.Vector3(d.x / human.placed.k, 0, d.z / human.placed.k));
-    });
-    shiftParts(vertebrae);
-    shiftParts(human.sk.filter(p => RE.disc.test(p.n)));
-  } else {
-    // Fallback edukatif: bentuk ruas 3D dibuat dari geometri Three.js
-    // ketika berkas rangka asli tidak tersedia. Siluet tubuh tetap memakai mesh kulit anatomi.
-    const bounds = partBox([human.skin]), size = boxS(bounds), center = boxC(bounds), k = human.placed.k;
-    const top = bounds.min.y + size.y * .79, bottom = bounds.min.y + size.y * .22;
-    const count = 24, span = top - bottom;
-    const spineMat = mat(COL.bone, { roughness: .58 });
-    const discMat = mat('#9fc9d7', { roughness: .45 });
-    const vertebraMeshes = [];
-    for (let i = 0; i < count; i++) {
-      const t = i / (count - 1);
-      const y = top - t * span;
-      const d = bendAt(t);
-      const v = mesh(new THREE.SphereGeometry(1, 20, 14), spineMat);
-      v.scale.set(size.x * k * .105, size.y * k * .014, size.x * k * .085);
-      v.position.set(d.x * size.x * k, (y - center.y) * k, d.z * size.x * k);
-      human.holder.add(v);
-      vertebraMeshes.push({ mesh: v, t, x: d.x * size.x * k, z: d.z * size.x * k });
-      if (i < count - 1) {
-        const disc = mesh(new THREE.CylinderGeometry(size.x * k * .052, size.x * k * .052, size.y * k * .009, 16), discMat);
-        disc.position.set(d.x * size.x * k, (y - span / (count - 1) * .5 - center.y) * k, d.z * size.x * k);
-        human.holder.add(disc);
-      }
+  const boneMeshes = new Map();
+  boneLayer.children.forEach(o => { if (o.userData.part) boneMeshes.set(o.userData.part, o); });
+  [...vertebrae, ...discs].forEach(part => {
+    const center = boxC(partBox([part]));
+    const t = Math.max(0, Math.min(1, (top - center.y) / span));
+    const offset = curveAt(t);
+    const boneMesh = boneMeshes.get(part);
+    if (boneMesh) {
+      boneMesh.position.x += offset.x / placed.k;
+      boneMesh.position.z += offset.z / placed.k;
     }
-    // Perbarui posisi kurva sesuai bentuk kelainan yang dipilih.
-    vertebraMeshes.forEach(v => {
-      const d = bendAt(v.t);
-      v.mesh.position.x = d.x * size.x * k;
-      v.mesh.position.z = d.z * size.x * k;
-    });
-  }
+  });
 }
+
 
 /* Kamera diperlebar agar seluruh tubuh terlihat utuh dan ukuran keempat model konsisten. */
 viewer('spineNormal', { hw: 1.45, hh: 2.15, cy: 0, auto: false, interactive: true, zoom: 1 }, api => buildSpineVariant(api, { type: 'normal', view: 'side' }));
