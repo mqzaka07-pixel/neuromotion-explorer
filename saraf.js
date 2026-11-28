@@ -1074,10 +1074,10 @@ const BUILD_spine = async api => {
     api.label(name, x, -1.92, .22);
   }
 };
-viewer('spine', { hw: 5.65, hh: 3.8, cy: 0, auto: false }, BUILD_spine);
+viewer('spine', { hw: 5.65, hh: 4.25, cy: 0, auto: false, zoom: .88 }, BUILD_spine);
 
 /* ---------- Fisura: perbandingan dua tubuh utuh, normal vs retak ---------- */
-viewer('fisura', { hw: 5.9, hh: 3.8, cy: 0, auto: false, interactive: true }, async api => {
+viewer('fisura', { hw: 5.9, hh: 4.25, cy: 0, auto: false, interactive: true, zoom: .82 }, async api => {
   const left = await addHumanAnatomy(api, -1.55, 1.55, 3.45, { skinOpacity: .23 });
   const right = await addHumanAnatomy(api, 1.55, 1.55, 3.45, { skinOpacity: .23 });
   api.label('KIRI • NORMAL', -1.55, -1.95, .2);
@@ -1204,17 +1204,24 @@ viewer('artritis', { hw: 5.4, hh: 4.0, cy: 0, auto: false, interactive: true, zo
 viewer('oaCard', { hw: 5.4, hh: 4.0, cy: 0, auto: false, interactive: true, zoom: .94 }, BUILD_osteoartritis);
 
 
-/* ---------- Ilustrasi statis 3D untuk cara menjaga tulang dan sendi ---------- */
-viewer('boneCare', { hw: 3.2, hh: 6.7, cy: 0, auto: false, interactive: false }, async api => {
-  const human = await addHumanAnatomy(api, 0, 2.6, 6.2, { skinOpacity: .2 });
-  const jointNames = ['left shoulder','right shoulder','left elbow','right elbow','left hip','right hip','left knee','right knee'];
-  const marks = jointNames.map(name => one(human.sk, name)).filter(Boolean);
-  marks.forEach(p => {
-    const b = partBox([p]), c = boxC(b);
-    const marker = new THREE.Mesh(new THREE.SphereGeometry(.13,18,14), mat('#55c7d7',{emissive:new THREE.Color('#176b80'),emissiveIntensity:.3}));
-    marker.position.copy(human.placed.at(c));
+/* ---------- Model anatomi 3D tubuh utuh dengan penanda sendi utama ---------- */
+viewer('jointOverview', { hw: 3.5, hh: 7.0, cy: 0, auto: false, zoom: .9 }, async api => {
+  const human = await addHumanAnatomy(api, 0, 2.7, 6.5, { skinOpacity: .22 });
+  const jointNames = [
+    ['left shoulder', 'Bahu'], ['right shoulder', 'Bahu'],
+    ['left elbow', 'Siku'], ['right elbow', 'Siku'],
+    ['left hip', 'Pinggul'], ['right hip', 'Pinggul'],
+    ['left knee', 'Lutut'], ['right knee', 'Lutut']
+  ];
+  const markerMat = mat('#55c7d7', { emissive: new THREE.Color('#176b80'), emissiveIntensity: .35, roughness: .35 });
+  jointNames.forEach(([name]) => {
+    const part = one(human.sk, name);
+    if (!part) return;
+    const marker = new THREE.Mesh(new THREE.SphereGeometry(.105, 18, 14), markerMat);
+    marker.position.copy(human.placed.at(boxC(partBox([part]))));
     human.holder.add(marker);
   });
+  api.label('SENDI UTAMA', 0, -3.25, 0);
 });
 
 /* ---------- Model sel otot (skematis, mikroskopis) ---------- */
