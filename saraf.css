@@ -532,3 +532,11 @@ footer { border-top: 1px solid var(--line); background: var(--bg2); padding: 1.6
 #kelainan [data-scene="fisura"] .lb,
 #kelainan [data-scene="artritis"] .lb,
 #kelainan [data-scene="oaCard"] .lb { z-index:3; font-size:12px; font-weight:700; }
+
+/* Fallback gambar jika server sumber eksternal tidak dapat dijangkau. */
+.card-thumb img.asset-fallback,
+.bone-care-photo.asset-fallback {
+  object-fit: contain !important;
+  padding: 12px;
+  background: #10283c;
+}
