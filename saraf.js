@@ -1081,10 +1081,10 @@ async function buildSpineVariant(api, cfg) {
   shiftParts(human.sk.filter(p => RE.disc.test(p.n)));
 }
 
-viewer('spineNormal', { hw: 1.8, hh: 3.1, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'normal', side: false }));
-viewer('spineScoliosis', { hw: 1.8, hh: 3.1, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'scoliosis', side: false }));
-viewer('spineKyphosis', { hw: 1.8, hh: 3.1, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'kyphosis', side: true }));
-viewer('spineLordosis', { hw: 1.8, hh: 3.1, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'lordosis', side: true }));
+viewer('spineNormal', { hw: 1.2, hh: 1.8, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'normal', side: false }));
+viewer('spineScoliosis', { hw: 1.2, hh: 1.8, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'scoliosis', side: false }));
+viewer('spineKyphosis', { hw: 1.2, hh: 1.8, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'kyphosis', side: true }));
+viewer('spineLordosis', { hw: 1.2, hh: 1.8, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'lordosis', side: true }));
 
 /* ---------- Fisura: perbandingan dua tubuh utuh, normal vs retak ---------- */
 viewer('fisura', { hw: 5.9, hh: 4.25, cy: 0, auto: false, interactive: true, zoom: .82 }, async api => {
