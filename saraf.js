@@ -515,74 +515,150 @@ function place(holder, obj, box, maxW, maxH, round = true) {
 function viewer(name, opt, build) {
   const el = document.querySelector('[data-scene="' + name + '"]');
   if (!el) return;
-  if (typeof THREE === 'undefined') {
-    el.innerHTML = '<p class="msg">Model 3D membutuhkan koneksi internet untuk memuat Three.js. Sambungkan internet lalu muat ulang halaman.</p>';
-    return;
-  }
-  let renderer;
-  try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
-  catch (e) { el.innerHTML = '<p class="msg">Browser ini tidak mendukung grafik 3D (WebGL).</p>'; return; }
 
-  const scene = new THREE.Scene();
-  const cam = new THREE.PerspectiveCamera(38, 1, .1, 400);
-  const g = new THREE.Group();
-  scene.add(g);
-  scene.add(new THREE.HemisphereLight(0xfff6ec, 0x1a2633, .8));
-  const key = new THREE.DirectionalLight(0xffffff, .85); key.position.set(4, 7, 9); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x9fdcff, .45); rim.position.set(-6, 2, -6); scene.add(rim);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  el.appendChild(renderer.domElement);
+  const st = { visible: false, ready: false, w: 0, h: 0, drag: false, idleAt: 0, render: null };
   const interactive = opt.interactive !== false;
-  if (interactive) {
-    const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = '↔ geser untuk memutar'; el.appendChild(hint);
+  let renderer = null, scene = null, cam = null, g = null, api = null;
+  let generation = 0, resizeObserver = null;
+
+  function dispose() {
+    generation++;
+    st.ready = false;
+    st.w = 0;
+    st.h = 0;
+    st.render = null;
+    if (renderer) {
+      renderer.dispose();
+      if (renderer.forceContextLoss) renderer.forceContextLoss();
+      renderer.domElement.remove();
+    }
+    renderer = null;
+    scene = null;
+    cam = null;
+    g = null;
+    api = null;
+    el.querySelectorAll('.hint, .loading, .lb, canvas').forEach(node => node.remove());
   }
-  const loading = document.createElement('div'); loading.className = 'loading'; loading.textContent = 'Memuat model 3D…'; el.appendChild(loading);
 
-  const st = { visible: false, ready: false, w: 0, h: 0, drag: false, idleAt: 0 };
-  const api = {
-    g, rot: [g], labels: [], tick: null, renderer,
-    label(text, x, y, z = 0, parent, large = false) {
-      const d = document.createElement('div');
-      d.className = large ? 'lb lb-large' : 'lb'; d.textContent = text;
-      if (large) { d.style.fontSize = 'clamp(13px, 1.05vw, 16px)'; d.style.fontWeight = '750'; d.style.padding = '5px 8px'; d.style.lineHeight = '1.3'; d.style.maxWidth = '175px'; d.style.whiteSpace = 'normal'; d.style.textAlign = 'center'; } el.appendChild(d);
-      const l = { d, v: new THREE.Vector3(x, y, z), parent, show: true };
-      api.labels.push(l);
-      return l;
-    },
-    frame(hw, hh, cy) { opt.hw = hw; opt.hh = hh; if (cy !== undefined) opt.cy = cy; fit(); }
-  };
+  function init() {
+    if (renderer || !st.visible || !el.clientWidth || !el.clientHeight) return;
+    if (typeof THREE === 'undefined') {
+      el.innerHTML = '<p class="msg">Model 3D membutuhkan koneksi internet untuk memuat Three.js. Sambungkan internet lalu muat ulang halaman.</p>';
+      return;
+    }
+    const myGeneration = ++generation;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch (e) {
+      el.innerHTML = '<p class="msg">Browser ini tidak mendukung grafik 3D (WebGL).</p>';
+      return;
+    }
 
-  const tanHalf = Math.tan(19 * Math.PI / 180);
-  function fit() {
-    st.w = el.clientWidth; st.h = el.clientHeight;
-    if (!st.w || !st.h) return;
-    renderer.setSize(st.w, st.h, false);
-    cam.aspect = st.w / st.h;
-    const cy = opt.cy || 0;
-    const z = Math.max(opt.hh / tanHalf, opt.hw / (tanHalf * cam.aspect)) * 1.08 * (opt.zoom || 1);
-    cam.position.set(0, cy, z);
-    cam.lookAt(0, cy, 0);
-    cam.updateProjectionMatrix();
+    scene = new THREE.Scene();
+    cam = new THREE.PerspectiveCamera(38, 1, .1, 400);
+    g = new THREE.Group();
+    scene.add(g);
+    scene.add(new THREE.HemisphereLight(0xfff6ec, 0x1a2633, .8));
+    const key = new THREE.DirectionalLight(0xffffff, .85); key.position.set(4, 7, 9); scene.add(key);
+    const rim = new THREE.DirectionalLight(0x9fdcff, .45); rim.position.set(-6, 2, -6); scene.add(rim);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    el.appendChild(renderer.domElement);
+
+    if (interactive) {
+      const hint = document.createElement('span');
+      hint.className = 'hint';
+      hint.textContent = '↔ geser untuk memutar';
+      el.appendChild(hint);
+    }
+    const loading = document.createElement('div');
+    loading.className = 'loading';
+    loading.textContent = 'Memuat model 3D…';
+    el.appendChild(loading);
+
+    api = {
+      g, rot: [g], labels: [], tick: null, renderer,
+      label(text, x, y, z = 0, parent, large = false) {
+        const d = document.createElement('div');
+        d.className = large ? 'lb lb-large' : 'lb';
+        d.textContent = text;
+        if (large) {
+          d.style.fontSize = 'clamp(13px, 1.05vw, 16px)';
+          d.style.fontWeight = '750';
+          d.style.padding = '5px 8px';
+          d.style.lineHeight = '1.3';
+          d.style.maxWidth = '175px';
+          d.style.whiteSpace = 'normal';
+          d.style.textAlign = 'center';
+        }
+        el.appendChild(d);
+        const label = { d, v: new THREE.Vector3(x, y, z), parent, show: true };
+        api.labels.push(label);
+        return label;
+      },
+      frame(hw, hh, cy) {
+        opt.hw = hw; opt.hh = hh;
+        if (cy !== undefined) opt.cy = cy;
+        fit();
+      }
+    };
+
+    function fit() {
+      if (!renderer || !cam) return;
+      st.w = el.clientWidth;
+      st.h = el.clientHeight;
+      if (!st.w || !st.h) return;
+      renderer.setSize(st.w, st.h, false);
+      cam.aspect = st.w / st.h;
+      const tanHalf = Math.tan(19 * Math.PI / 180);
+      const cy = opt.cy || 0;
+      const z = Math.max(opt.hh / tanHalf, opt.hw / (tanHalf * cam.aspect)) * 1.08 * (opt.zoom || 1);
+      cam.position.set(0, cy, z);
+      cam.lookAt(0, cy, 0);
+      cam.updateProjectionMatrix();
+    }
+
+    fit();
+    Promise.resolve().then(() => build(api)).then(() => {
+      if (myGeneration !== generation || !renderer) return;
+      loading.remove();
+      st.ready = true;
+    }).catch(err => {
+      if (myGeneration !== generation || !renderer) return;
+      console.error(name, err);
+      loading.textContent = 'Model 3D gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.';
+      loading.classList.add('err');
+    });
+
+    st.render = t => {
+      if (!st.ready || !renderer || !scene || !cam) return;
+      const idle = !st.drag && performance.now() - st.idleAt > 1800;
+      if (idle && opt.auto !== false && !reduceMotion) api.rot.forEach(o => { o.rotation.y += .005; });
+      if (api.tick) api.tick(t);
+      scene.updateMatrixWorld(true);
+      renderer.render(scene, cam);
+      api.labels.forEach(label => {
+        label.d.style.display = label.show ? '' : 'none';
+        if (!label.show) return;
+        const matrix = (label.parent || g).matrixWorld;
+        const p = label.v.clone().applyMatrix4(matrix).project(cam);
+        label.d.style.left = ((p.x + 1) / 2 * st.w) + 'px';
+        label.d.style.top = ((1 - p.y) / 2 * st.h) + 'px';
+      });
+    };
   }
-  new ResizeObserver(fit).observe(el);
-  new IntersectionObserver(es => es.forEach(e => { st.visible = e.isIntersecting; })).observe(el);
-  fit();
-
-  Promise.resolve().then(() => build(api)).then(() => {
-    loading.remove();
-    st.ready = true;
-  }).catch(err => {
-    console.error(name, err);
-    loading.textContent = 'Model 3D gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.';
-    loading.classList.add('err');
-  });
 
   let lx = 0, ly = 0;
   if (interactive) {
-    el.addEventListener('pointerdown', e => { st.drag = true; lx = e.clientX; ly = e.clientY; el.setPointerCapture(e.pointerId); });
+    el.addEventListener('pointerdown', e => {
+      if (!api) return;
+      st.drag = true;
+      lx = e.clientX; ly = e.clientY;
+      el.setPointerCapture(e.pointerId);
+    });
     el.addEventListener('pointermove', e => {
-      if (!st.drag) return;
-      const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
+      if (!st.drag || !api) return;
+      const dx = e.clientX - lx, dy = e.clientY - ly;
+      lx = e.clientX; ly = e.clientY;
       api.rot.forEach(o => { o.rotation.y += dx * .01; });
       const tm = opt.tiltMax ?? .5;
       g.rotation.x = Math.max(-tm, Math.min(tm, g.rotation.x + dy * .006));
@@ -592,22 +668,31 @@ function viewer(name, opt, build) {
     el.addEventListener('pointercancel', end);
   }
 
-  st.render = t => {
-    if (!st.ready) return;
-    const idle = !st.drag && performance.now() - st.idleAt > 1800;
-    if (idle && opt.auto !== false && !reduceMotion) api.rot.forEach(o => { o.rotation.y += .005; });
-    if (api.tick) api.tick(t);
-    scene.updateMatrixWorld(true);
-    renderer.render(scene, cam);
-    api.labels.forEach(l => {
-      l.d.style.display = l.show ? '' : 'none';
-      if (!l.show) return;
-      const m = (l.parent || g).matrixWorld;
-      const p = l.v.clone().applyMatrix4(m).project(cam);
-      l.d.style.left = ((p.x + 1) / 2 * st.w) + 'px';
-      l.d.style.top = ((1 - p.y) / 2 * st.h) + 'px';
+  const ro = new ResizeObserver(() => {
+    if (renderer && cam) {
+      st.w = el.clientWidth; st.h = el.clientHeight;
+      if (st.w && st.h) {
+        renderer.setSize(st.w, st.h, false);
+        cam.aspect = st.w / st.h;
+        const tanHalf = Math.tan(19 * Math.PI / 180);
+        const cy = opt.cy || 0;
+        const z = Math.max(opt.hh / tanHalf, opt.hw / (tanHalf * cam.aspect)) * 1.08 * (opt.zoom || 1);
+        cam.position.set(0, cy, z);
+        cam.lookAt(0, cy, 0);
+        cam.updateProjectionMatrix();
+      }
+    } else if (st.visible) init();
+  });
+  ro.observe(el);
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      st.visible = entry.isIntersecting;
+      if (st.visible) init();
+      else dispose();
     });
-  };
+  }, { rootMargin: '80px 0px' });
+  io.observe(el);
   viewers.push(st);
 }
 
