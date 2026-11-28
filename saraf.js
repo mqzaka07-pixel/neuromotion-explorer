@@ -820,9 +820,7 @@ viewer('body', { hw: 3.4, hh: 8.4 }, BUILD_body);
 
 /* Kartu Beranda: model rangka manusia normal yang dirender langsung dan dapat diputar. */
 viewer('homeNormalSkeleton', { hw: 3.4, hh: 8.4, auto: false, interactive: false, zoom: .72 }, async api => {
-  const sk = await pack('skeleton');
-  const bone = mat(COL.bone, { roughness: .65 });
-  place(api.g, group(sk, bone), partBox(sk), 3.4, 8.4);
+  await addHumanAnatomy(api, 0, 3.4, 8.4, { skinOpacity: .3 });
 });
 
 /* ---------- Bagian-bagian otak ---------- */
