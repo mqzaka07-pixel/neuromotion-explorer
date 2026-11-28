@@ -1049,73 +1049,42 @@ async function addHumanAnatomy(api, x, maxW, maxH, opts = {}) {
 /* ---------- Kelainan tulang belakang: empat tubuh utuh, bukan kolom tulang saja ---------- */
 /* ---------- Perbandingan 3D tulang belakang: bentuk tiap kelainan dibuat berbeda ---------- */
 /* ---------- Empat model anatomi manusia utuh dengan tulang belakang berbeda ---------- */
-const BUILD_spine = async api => {
+/* ---------- Model anatomi manusia utuh: satu model per kartu ---------- */
+async function buildSpineVariant(api, cfg) {
   api.rot = [];
-  const configs = [
-    { name: 'Normal', type: 'normal', side: false },
-    { name: 'Skoliosis', type: 'scoliosis', side: false },
-    { name: 'Kifosis', type: 'kyphosis', side: true },
-    { name: 'Lordosis', type: 'lordosis', side: true }
-  ];
+  const human = await addHumanAnatomy(api, 0, 1.85, 2.85, { skinOpacity: .16 });
+  if (cfg.side) human.holder.rotation.y = Math.PI / 2;
+  api.rot.push(human.holder);
 
-  for (let i = 0; i < configs.length; i++) {
-    const cfg = configs[i];
-    const x = (i - 1.5) * 2.65;
+  const vertebrae = human.sk.filter(p => RE.spineBone.test(p.n));
+  if (!vertebrae.length) throw new Error('Model ruas tulang belakang tidak ditemukan');
+  const ys = vertebrae.map(p => boxC(partBox([p])).y);
+  const top = Math.max(...ys), bottom = Math.min(...ys);
+  const span = Math.max(.001, top - bottom);
 
-    // Setiap kondisi memakai model anatomi manusia utuh: kulit transparan,
-    // organ dalam, dan seluruh rangka tetap terlihat.
-    const human = await addHumanAnatomy(api, x, 2.25, 3.55, { skinOpacity: .19 });
-    if (cfg.side) human.holder.rotation.y = Math.PI / 2;
-    api.rot.push(human.holder);
+  const bendAt = t => {
+    if (cfg.type === 'scoliosis') return { x: .28 * Math.sin(t * Math.PI * 2), z: 0 };
+    if (cfg.type === 'kyphosis') return { x: 0, z: .34 * Math.exp(-Math.pow((t - .38) / .19, 2)) };
+    if (cfg.type === 'lordosis') return { x: 0, z: -.31 * Math.exp(-Math.pow((t - .76) / .14, 2)) };
+    return { x: 0, z: .025 * Math.sin(t * Math.PI * 2) };
+  };
 
-    const vertebrae = human.sk.filter(p => RE.spineBone.test(p.n));
-    if (!vertebrae.length) throw new Error('Model ruas tulang belakang tidak ditemukan');
+  const shiftParts = parts => parts.forEach(part => {
+    const center = boxC(partBox([part]));
+    const t = (top - center.y) / span;
+    const d = bendAt(t);
+    const mesh = human.bones.children.find(o => o.userData.part === part);
+    if (mesh) mesh.position.add(new THREE.Vector3(d.x / human.placed.k, 0, d.z / human.placed.k));
+  });
 
-    const ys = vertebrae.map(p => boxC(partBox([p])).y);
-    const top = Math.max(...ys), bottom = Math.min(...ys);
-    const span = Math.max(.001, top - bottom);
+  shiftParts(vertebrae);
+  shiftParts(human.sk.filter(p => RE.disc.test(p.n)));
+}
 
-    // Geser mesh vertebra asli, bukan sekadar menggambar garis lengkung di sampingnya.
-    vertebrae.forEach(part => {
-      const center = boxC(partBox([part]));
-      const t = (top - center.y) / span;
-      let bend = 0;
-
-      if (cfg.type === 'scoliosis') {
-        bend = .34 * Math.sin(t * Math.PI * 2);
-        part._spineDelta = new THREE.Vector3(bend / human.placed.k, 0, 0);
-      } else if (cfg.type === 'kyphosis') {
-        bend = .48 * Math.exp(-Math.pow((t - .38) / .19, 2));
-        part._spineDelta = new THREE.Vector3(0, 0, bend / human.placed.k);
-      } else if (cfg.type === 'lordosis') {
-        bend = -.43 * Math.exp(-Math.pow((t - .76) / .14, 2));
-        part._spineDelta = new THREE.Vector3(0, 0, bend / human.placed.k);
-      } else {
-        bend = .035 * Math.sin(t * Math.PI * 2);
-        part._spineDelta = new THREE.Vector3(0, 0, bend / human.placed.k);
-      }
-
-      const mesh = human.bones.children.find(o => o.userData.part === part);
-      if (mesh) mesh.position.add(part._spineDelta);
-    });
-
-    // Disk antar-ruas ikut bergeser agar sambungan tulang tetap mengikuti lengkungan.
-    const discs = human.sk.filter(p => RE.disc.test(p.n));
-    discs.forEach(part => {
-      const center = boxC(partBox([part]));
-      const t = (top - center.y) / span;
-      let delta = new THREE.Vector3();
-      if (cfg.type === 'scoliosis') delta.x = .34 * Math.sin(t * Math.PI * 2) / human.placed.k;
-      if (cfg.type === 'kyphosis') delta.z = .48 * Math.exp(-Math.pow((t - .38) / .19, 2)) / human.placed.k;
-      if (cfg.type === 'lordosis') delta.z = -.43 * Math.exp(-Math.pow((t - .76) / .14, 2)) / human.placed.k;
-      const mesh = human.bones.children.find(o => o.userData.part === part);
-      if (mesh) mesh.position.add(delta);
-    });
-
-    api.label(cfg.name, x, -2.02, .22);
-  }
-};
-viewer('spine', { hw: 5.9, hh: 4.4, cy: 0, auto: false, interactive: true, zoom: .86 }, BUILD_spine);
+viewer('spineNormal', { hw: 1.8, hh: 3.1, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'normal', side: false }));
+viewer('spineScoliosis', { hw: 1.8, hh: 3.1, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'scoliosis', side: false }));
+viewer('spineKyphosis', { hw: 1.8, hh: 3.1, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'kyphosis', side: true }));
+viewer('spineLordosis', { hw: 1.8, hh: 3.1, cy: 0, auto: false, interactive: true, zoom: .92 }, api => buildSpineVariant(api, { type: 'lordosis', side: true }));
 
 /* ---------- Fisura: perbandingan dua tubuh utuh, normal vs retak ---------- */
 viewer('fisura', { hw: 5.9, hh: 4.25, cy: 0, auto: false, interactive: true, zoom: .82 }, async api => {
