@@ -1050,6 +1050,7 @@ async function addHumanAnatomy(api, x, maxW, maxH, opts = {}) {
 /* ---------- Perbandingan 3D tulang belakang: bentuk tiap kelainan dibuat berbeda ---------- */
 /* ---------- Empat model anatomi manusia utuh dengan tulang belakang berbeda ---------- */
 const BUILD_spine = async api => {
+  api.rot = [];
   const configs = [
     { name: 'Normal', type: 'normal', side: false },
     { name: 'Skoliosis', type: 'scoliosis', side: false },
