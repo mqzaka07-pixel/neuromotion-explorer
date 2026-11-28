@@ -3,7 +3,19 @@
    Navigasi, tab materi, simulasi alur, kuis, dan model 3D (Three.js)
    ========================================================= */
 const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const $ = (s, r = document) => [...r.querySelectorAll(s)];
+
+/* Fallback gambar eksternal yang gagal dimuat agar tidak tampil sebagai ikon rusak. */
+const IMAGE_FALLBACK = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420"><rect width="720" height="420" fill="#10283c"/><path d="M250 290l80-95 65 70 55-55 90 80" fill="none" stroke="#63d7cc" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle cx="360" cy="125" r="34" fill="none" stroke="#f6c453" stroke-width="10"/><text x="360" y="365" fill="#d6e8f7" font-family="Arial,sans-serif" font-size="27" text-anchor="middle">Ilustrasi tidak tersedia</text></svg>'
+);
+$('img').forEach(img => img.addEventListener('error', () => {
+  if (img.dataset.fallbackApplied) return;
+  img.dataset.fallbackApplied = '1';
+  img.src = IMAGE_FALLBACK;
+  img.classList.add('asset-fallback');
+}));
+
 
 /* ---------------------------------------------------------
    1. NAVIGASI HALAMAN (hash routing)
@@ -508,7 +520,7 @@ function place(holder, obj, box, maxW, maxH, round = true) {
 /**
  * Membuat satu penampil 3D.
  */
-function viewer(name, opt, build) {
+function viewerNow(name, opt, build) {
   const el = document.querySelector('[data-scene="' + name + '"]');
   if (!el) return;
   if (typeof THREE === 'undefined') {
@@ -605,6 +617,24 @@ function viewer(name, opt, build) {
     });
   };
   viewers.push(st);
+}
+
+/* Inisialisasi model hanya saat mendekati layar: mengurangi beban GPU pada HP. */
+function viewer(name, opt, build) {
+  const el = document.querySelector('[data-scene="' + name + '"]');
+  if (!el) return;
+  if (!('IntersectionObserver' in window)) {
+    viewerNow(name, opt, build);
+    return;
+  }
+  let started = false;
+  const io = new IntersectionObserver(entries => {
+    if (started || !entries.some(e => e.isIntersecting)) return;
+    started = true;
+    io.disconnect();
+    viewerNow(name, opt, build);
+  }, { rootMargin: '220px 0px', threshold: 0.01 });
+  io.observe(el);
 }
 
 function loop(ms) {
